@@ -70,14 +70,14 @@ blacklist_vetorizada = vetorizar_ips(list(blacklist_ips))
 csv_vetorizado = vetorizar_ips(csv_ips)
 
 # # Criar rótulos
-# y_blacklist = np.ones(len(blacklist_vetorizada))
-# y_csv = np.zeros(len(csv_vetorizado))
+y_blacklist = np.ones(len(blacklist_vetorizada))
+y_csv = np.zeros(len(csv_vetorizado))
 
 # # Dados finais para treinamento
-# X = np.vstack((blacklist_vetorizada, csv_vetorizado))
-# print(X)
-# y = np.concatenate((y_blacklist, y_csv))
-# print(y)
+X = np.vstack((blacklist_vetorizada, csv_vetorizado))
+print(X)
+y = np.concatenate((y_blacklist, y_csv))
+print(y)
 
 # # Criar a rede neural
 # model = keras.Sequential([
