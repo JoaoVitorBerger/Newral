@@ -80,11 +80,11 @@ y = np.concatenate((y_blacklist, y_csv))
 print(y)
 
 # # Criar a rede neural
-# model = keras.Sequential([
-#     layers.Dense(32, activation='relu', input_shape=(16,)),
-#     layers.Dense(16, activation='relu'),
-#     layers.Dense(1, activation='sigmoid')
-# ])
+model = keras.Sequential([
+     layers.Dense(32, activation='relu', input_shape=(16,)),
+     layers.Dense(16, activation='relu'),
+     layers.Dense(1, activation='sigmoid')
+])
 
 # # Compilar o modelo
 # model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
