@@ -28,7 +28,7 @@ csv_vetorizado = vetorizar_ips(csv_ips)
  X = np.vstack((blacklist_vetorizada, csv_vetorizado))
  y = np.concatenate((y_blacklist, y_csv))
 
-    Aqui estamos empilhando todos os valores das blacklists e do csv_vetorizado para criar um único array, realizamos o mesmo processo para a classificação dos IPs. A rede neural necessita de uma entrada uniforme para seu treinamento, mesmo as informações entre seguros e inseguros, a rede consegue se lembrar, por meio da etiqueta daquele ip, se ele é malicioso ou ainda não definido
+    Aqui estamos empilhando todos os valores das blacklists e do csv_vetorizado para criar dois arrays diferentes em que um contém os valores dos ips e o outro contém o rótulo para ele. A rede neural necessita de uma entrada uniforme para seu treinamento, mesmo as informações entre seguros e inseguros, a rede consegue se lembrar, por meio da etiqueta daquele ip, se ele é malicioso ou ainda não definido
 
 # # Criar a rede neural
  model = keras.Sequential([
@@ -70,7 +70,7 @@ csv_vetorizado = vetorizar_ips(csv_ips)
 
     esse processo segue para todos os valores retornados pela função sigmoide.
 
-    Após a realização dessa etapa entramos na camada de ajuste dos pesos da rede utilizando o Backpropagation que seria a taxa de variação da função de perda L(loss) em relação aos pesos W(weigth), ou indicativo de como os pesos devem ser ajustados para aproximar o valor de classificação do valor desejado.Para cada valor que foi gerado anteriormente, utilizaremos a seguinte função
+    Após a realização dessa etapa entramos na camada de ajuste dos pesos da rede utilizando o Backpropagation que seria a taxa de variação da função de perda L(loss) em relação aos pesos W(weigth), ou indicativo de como os pesos devem ser ajustados para aproximar o valor de classificação do valor desejado. Para cada valor que foi gerado anteriormente, utilizaremos a seguinte função
     L/w = (Y^ - Y) . X
 
     Onde:
@@ -90,40 +90,3 @@ csv_vetorizado = vetorizar_ips(csv_ips)
     w= w - n .(L/W)
 
     Onde n é a taxa de aprendizado e (L/W) é a taxa de variação já calculada.
-
-##Compilando o modelo
-    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-
-   Aqui estamos ajustando o modelo com determinadas configurações, como o optimizer='adam'
-(Adaptive Moment Estimation). Ele ajusta os pesos da rede neural durante o treinamento de forma eficiente, combinando duas técnicas:
-
-1️⃣ **Momentum**: Acumula um histórico dos gradientes passados para suavizar a atualização dos pesos, reduzindo oscilações bruscas na direção do gradiente.
-
-2️⃣ **RMSProp**: Ajusta a taxa de aprendizado dinamicamente para cada peso individual, reduzindo a taxa de aprendizado quando os gradientes variam muito e mantendo-a estável quando a variação é menor.
-
-Dessa forma, o Adam evita problemas comuns do gradiente descendente tradicional, que pode apresentar magnitudes muito diferentes entre os neurônios, dificultando a convergência do modelo.
-
-model.fit(X, y, epochs=10, batch_size=16, validation_split=0.2)
-
-Aqui o modelo é treinado com os dados fornecidos.
-
-1️⃣ X, y
-
-    X: Conjunto de entradas (IPs vetorizados).
-    y: Rótulos (1 para IP malicioso, 0 para IP normal).
-
-2️⃣ epochs=10
-
-    Define o número de épocas do treinamento.
-    Uma época significa que todos os dados de treinamento foram usados uma vez para atualizar os pesos da rede.
-    Se epochs=10, o modelo passará 10 vezes pelos dados, ajustando seus pesos a cada rodada.
-
-3️⃣ batch_size=16
-
-    Define que os dados serão processados em lotes de 16 amostras.
-    Em vez de alimentar toda a base de dados de uma vez, o modelo treina com pequenos grupos de amostras, o que melhora a eficiência e reduz o consumo de memória.
-
-4️⃣ validation_split=0.2
-
-    Significa que 20% dos dados serão reservados para validação.
-    O modelo treina com 80% dos dados e usa os 20% restantes para testar o desempenho em dados nunca vistos durante o treinamento.
