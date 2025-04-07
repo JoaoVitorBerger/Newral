@@ -1,4 +1,3 @@
-timestamp,rule_type,action,user,rule_id,rule_description,policy_id,policy_name,source_interface,destination_interface,ip_source,ip_destination,port_source,port_destination,protocol,status,additional_info,notes,flag
 2025-03-06 09:00:00,Firewall Rule,Allowed,roberto.lima@pmg.local,100,ACESSO INTERNET REDE DE ACESSO,157,Default SNAT IPv4,Port8.27,Port6,10.10.10.25,167.172.69.229,59251,8080,TCP,1,LDAP Aberto,,1
 2025-03-06 09:00:11,Firewall Rule,Allowed,,110,ACESSO INTERNET REDE DE ACESSO,148,Default SNAT IPv4,Port6.22,Port14,192.168.1.92,192.168.1.47,52308,80,TCP,1,LDAP Aberto,,1
 2025-03-06 09:00:11,Firewall Rule,Allowed,joana.pereira@pmg.local,63,ACESSO INTERNET REDE DE ACESSO,192,Default SNAT IPv4,Port3.28,Port16,192.168.1.54,10.10.10.18,52740,80,TCP,1,LDAP Aberto,,1
@@ -11,6 +10,22 @@ timestamp,rule_type,action,user,rule_id,rule_description,policy_id,policy_name,s
 2025-03-06 09:00:25,Firewall Rule,Allowed,ana.santos@pmg.local,91,ACESSO INTERNET REDE DE ACESSO,130,Default SNAT IPv4,Port4.26,Port4,192.168.1.69,10.10.10.26,58016,80,TCP,1,LDAP Aberto,,1
 2025-03-06 09:00:25,Firewall Rule,Allowed,ana.santos@pmg.local,97,ACESSO INTERNET REDE DE ACESSO,116,Default SNAT IPv4,Port6.20,Port3,192.168.1.38,10.10.10.36,50792,80,TCP,1,LDAP Aberto,,1
 2025-03-06 09:00:25,Firewall Rule,Allowed,ana.santos@pmg.local,83,ACESSO INTERNET REDE DE ACESSO,184,Default SNAT IPv4,Port7.9,Port8,192.168.1.71,45.227.253.95,59822,1433,TCP,1,LDAP Aberto,,1
+2025-03-06 10:30:00,Firewall Rule,Allowed,,100,ACESSO INTERNET REDE DE ACESSO,150,Default SNAT IPv4,Port9.10,Port5,185.220.101.1,192.168.1.97,54000,80,TCP,1
+2025-03-06 10:30:00,Firewall Rule,Allowed,,101,ACESSO INTERNET REDE DE ACESSO,150,Default SNAT IPv4,Port9.11,Port5,185.220.101.2,192.168.1.97,54001,80,TCP,1
+2025-03-06 10:30:00,Firewall Rule,Allowed,,102,ACESSO INTERNET REDE DE ACESSO,150,Default SNAT IPv4,Port9.12,Port5,185.220.101.3,192.168.1.97,54002,80,TCP,1
+2025-03-06 10:30:00,Firewall Rule,Allowed,,100,ACESSO INTERNET REDE DE ACESSO,150,Default SNAT IPv4,Port9.10,Port5,185.220.101.1,192.168.1.97,54000,80,TCP,1
+2025-03-06 10:30:00,Firewall Rule,Allowed,,101,ACESSO INTERNET REDE DE ACESSO,150,Default SNAT IPv4,Port9.11,Port5,185.220.101.2,192.168.1.97,54001,80,TCP,1
+2025-03-06 10:30:00,Firewall Rule,Allowed,,102,ACESSO INTERNET REDE DE ACESSO,150,Default SNAT IPv4,Port9.12,Port5,185.220.101.3,192.168.1.97,54002,80,TCP,1
+2025-03-06 09:01:00,Firewall Rule,Allowed,joana.pereira@pmg.local,150,ACESSO INTERNET REDE DE ACESSO,200,Default SNAT IPv4,Port5.15,Port6,192.168.1.54,10.10.10.18,52345,22,TCP,1,LDAP Aberto,,1
+2025-03-06 09:01:01,Firewall Rule,Allowed,joana.pereira@pmg.local,151,ACESSO INTERNET REDE DE ACESSO,201,Default SNAT IPv4,Port5.15,Port6,192.168.1.54,10.10.10.18,52346,23,TCP,1,LDAP Aberto,,1
+2025-03-06 09:01:02,Firewall Rule,Allowed,joana.pereira@pmg.local,152,ACESSO INTERNET REDE DE ACESSO,202,Default SNAT IPv4,Port5.15,Port6,192.168.1.54,10.10.10.18,52347,25,TCP,1,LDAP Aberto,,1
+2025-03-06 09:01:03,Firewall Rule,Allowed,joana.pereira@pmg.local,153,ACESSO INTERNET REDE DE ACESSO,203,Default SNAT IPv4,Port5.15,Port6,192.168.1.54,10.10.10.18,52348,53,TCP,1,LDAP Aberto,,1
+2025-03-06 09:01:04,Firewall Rule,Allowed,joana.pereira@pmg.local,154,ACESSO INTERNET REDE DE ACESSO,204,Default SNAT IPv4,Port5.15,Port6,192.168.1.54,10.10.10.18,52349,80,TCP,1,LDAP Aberto,,1
+2025-03-06 09:01:05,Firewall Rule,Allowed,joana.pereira@pmg.local,155,ACESSO INTERNET REDE DE ACESSO,205,Default SNAT IPv4,Port5.15,Port6,192.168.1.54,10.10.10.18,52350,443,TCP,1,LDAP Aberto,,1
+2025-03-06 09:01:06,Firewall Rule,Allowed,joana.pereira@pmg.local,156,ACESSO INTERNET REDE DE ACESSO,206,Default SNAT IPv4,Port5.15,Port6,192.168.1.54,10.10.10.18,52351,3306,TCP,1,LDAP Aberto,,1
+2025-03-06 09:01:07,Firewall Rule,Allowed,joana.pereira@pmg.local,157,ACESSO INTERNET REDE DE ACESSO,207,Default SNAT IPv4,Port5.15,Port6,192.168.1.54,10.10.10.18,52352,3389,TCP,1,LDAP Aberto,,1
+2025-03-06 09:01:08,Firewall Rule,Allowed,joana.pereira@pmg.local,158,ACESSO INTERNET REDE DE ACESSO,208,Default SNAT IPv4,Port5.15,Port6,192.168.1.54,10.10.10.18,52353,8080,TCP,1,LDAP Aberto,,1
+2025-03-06 09:01:09,Firewall Rule,Allowed,joana.pereira@pmg.local,159,ACESSO INTERNET REDE DE ACESSO,209,Default SNAT IPv4,Port5.15,Port6,192.168.1.54,10.10.10.18,52354,5000,TCP,1,LDAP Aberto,,1
 2025-03-06 09:00:33,Firewall Rule,Allowed,,102,ACESSO INTERNET REDE DE ACESSO,194,Default SNAT IPv4,Port9.28,Port1,167.172.69.229,192.168.1.18,58610,17518,TCP,1,LDAP Aberto,,1
 2025-03-06 09:00:35,Firewall Rule,Allowed,,75,ACESSO INTERNET REDE DE ACESSO,100,Default SNAT IPv4,Port4.11,Port12,185.220.101.12,192.168.1.39,59419,5178,TCP,1,LDAP Aberto,,1
 2025-03-06 09:00:37,Firewall Rule,Allowed,ana.santos@pmg.local,84,ACESSO INTERNET REDE DE ACESSO,185,Default SNAT IPv4,Port6.3,Port10,192.168.1.89,10.10.10.17,58645,80,TCP,1,LDAP Aberto,,1
@@ -256,7 +271,7 @@ timestamp,rule_type,action,user,rule_id,rule_description,policy_id,policy_name,s
 2025-03-06 09:24:25,Firewall Rule,Allowed,marcelo.costa@pmg.local,113,ACESSO INTERNET REDE DE ACESSO,121,Default SNAT IPv4,Port10.18,Port8,192.168.1.26,192.168.1.22,52479,80,TCP,1,LDAP Aberto,,1
 2025-03-06 09:24:25,Firewall Rule,Allowed,roberto.lima@pmg.local,100,ACESSO INTERNET REDE DE ACESSO,101,Default SNAT IPv4,Port6.25,Port19,10.10.10.37,192.168.1.98,58752,80,TCP,1,LDAP Aberto,,1
 2025-03-06 09:24:25,Firewall Rule,Allowed,,103,ACESSO INTERNET REDE DE ACESSO,135,Default SNAT IPv4,Port5.10,Port16,192.168.1.29,10.10.10.40,53108,80,TCP,1,LDAP Aberto,,1
-2025-03-06 09:24:25,Firewall Rule,Allowed,joana.pereira@pmg.local,120,ACESSO INTERNET REDE DE ACESSO,181,Default SNAT IPv4,Port1.30,Port11,192.168.1.76,185.220.101.12,53763,23,TCP,1,LDAP Aberto,,1
+2025-03-06 09:24:25,Firewall Rule,Allowed,joana.pereira@pmg.local,120,ACESSO INTERNET REDE DE ACESSO,181,Default SNAT IPv4,Port1.30,Port11,192.168.1.76,,53763,23,TCP,1,LDAP Aberto,,1
 2025-03-06 09:24:32,Firewall Rule,Allowed,ana.santos@pmg.local,114,ACESSO INTERNET REDE DE ACESSO,160,Default SNAT IPv4,Port1.26,Port16,45.227.253.95,192.168.1.37,59819,80,TCP,1,LDAP Aberto,,1
 2025-03-06 09:24:33,Firewall Rule,Allowed,,109,ACESSO INTERNET REDE DE ACESSO,131,Default SNAT IPv4,Port8.9,Port12,192.168.1.15,10.10.10.28,58616,80,TCP,1,LDAP Aberto,,1
 2025-03-06 09:24:33,Firewall Rule,Allowed,roberto.lima@pmg.local,99,ACESSO INTERNET REDE DE ACESSO,132,Default SNAT IPv4,Port3.10,Port19,167.172.69.229,192.168.1.28,55729,80,TCP,1,LDAP Aberto,,1

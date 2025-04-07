@@ -1,16 +1,14 @@
 import pandas as pd
 import requests
-from collections import defaultdict
-from datetime import datetime
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder
-from sklearn.ensemble import RandomForestClassifier
-import re
 from bs4 import BeautifulSoup
-import matplotlib.pyplot as plt
-from sklearn.tree import plot_tree
 import numpy as np
+import ipaddress
+from sklearn.utils import resample
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report
+from sklearn.metrics import roc_curve, auc
+import matplotlib.pyplot as plt
 
 BLACKLIST_URL = "https://github.com/dolutech/blacklist-dolutech/blob/main/Black-list-semanal-dolutech.txt"
 BLACKLIST_FILE = "Black-list-semanal-dolutech.txt"
@@ -21,14 +19,13 @@ def baixar_blacklist():
     if response.status_code == 200:
         soup = BeautifulSoup(response.text, "html.parser")
         ips = soup.find_all('span', class_='pl-c1')
-        ips_extraidos = [ip.get_text() for ip in ips[:900]]
+        ips_extraidos = [ip.get_text() for ip in ips]
         if ips_extraidos:
             with open(BLACKLIST_FILE, 'w') as file:
                 for ip in ips_extraidos:
                     file.write(ip + "\n")
             return ips_extraidos
     return []
-
 # Função para carregar a blacklist
 def carregar_blacklist():
     try:
@@ -38,225 +35,201 @@ def carregar_blacklist():
         baixar_blacklist()
         return carregar_blacklist()
 
-# Função para criar features avançadas
-def criar_features_avancadas(df):
-    # Converter timestamp para datetime
-    df['datetime'] = pd.to_datetime(df['timestamp'])
+def ip_to_int(ip):
+    """Converte um endereço IP para um número inteiro."""
+    try:
+        return int(ipaddress.ip_address(ip))
+    except ValueError:
+        return 0  # Se não for um IP válido, retorna 0
+
+def protocolo_para_int(protocolo):
+    """Mapeia protocolos para valores numéricos."""
+    protocolos = {"TCP": 6, "UDP": 17, "ICMP": 1}
+    return protocolos.get(protocolo.upper(), -1)  # Retorna -1 se não estiver na lista
+
+def preparar_dados(caminho_arquivo):
+    """Processa os dados do arquivo CSV e retorna um DataFrame formatado."""
+    colunas = [
+        "Tempo", "Tipo de Regra", "Ação", "Usuário", "Código",
+        "Descrição", "Prioridade", "SNAT", "Porta Interna", "Porta Externa",
+        "IP de Origem", "IP de Destino", "Porta de Origem", "Porta de Destino",
+        "Protocolo", "Bytes Transferidos"
+    ]    # Tentar carregar os dados
+    try:
+        df = pd.read_csv(caminho_arquivo, header=None, names=colunas, delimiter=",", engine="python")
+    except:
+        df = pd.read_csv(caminho_arquivo, header=None, names=colunas, delimiter=";", engine="python")
+    print(df)
+    # Converte a coluna de tempo para timestamp UNIX
+    df["Tempo"] = pd.to_datetime(df["Tempo"], errors="coerce").astype(np.int64) // 10**9      # Adiciona colunas de tempo (Ano, Mês, Dia, Hora, Minuto, Segundo)
+    df["Hora"] = pd.to_datetime(df["Tempo"], unit="s").dt.hour
+    df["Minuto"] = pd.to_datetime(df["Tempo"], unit="s").dt.minute
+    df["Segundo"] = pd.to_datetime(df["Tempo"], unit="s").dt.second    # Mapeia se o usuário existe (1 se existir, 0 se for vazio)
+    df["Usuário"] = df["Usuário"].apply(lambda x: 1 if isinstance(x, str) and x.strip() else 0)    # Converte IPs para inteiros
+    df["IP de Origem"] = df["IP de Origem"].apply(ip_to_int)
+    df["IP de Destino"] = df["IP de Destino"].apply(ip_to_int)    # Converte protocolos para valores numéricos
+    df["Protocolo"] = df["Protocolo"].apply(protocolo_para_int)    # Converte portas para inteiros
+    df["Porta de Origem"] = pd.to_numeric(df["Porta de Origem"], errors="coerce").fillna(0).astype(int)
+    df["Porta de Destino"] = pd.to_numeric(df["Porta de Destino"], errors="coerce").fillna(0).astype(int)    # Seleciona as colunas relevantes
+    colunas_finais = ["Tempo","Hora", "Minuto", "Segundo",
+                      "Usuário", "IP de Origem", "IP de Destino", "Protocolo",
+                      "Porta de Origem", "Porta de Destino"]
+  
+    df_final = df[colunas_finais]
+    return df_final
+
+def extrair_features_adicionais(df, blacklist_set=None):
+    df["Tempo"] = pd.to_datetime(df["Tempo"])
+    # Ordena o DataFrame por IP de Origem e Tempo
+    df_sorted = df.sort_values(by=["IP de Origem", "Tempo"])
+    grupos = df_sorted.groupby("IP de Origem")
     
-    # Feature de horário noturno (00h-6h)
-    df['noturno'] = df['datetime'].dt.hour.apply(lambda x: 1 if x < 6 else 0)
+    # Número total de conexões por IP de Origem
+    qtd_conexoes = grupos.size().rename("Qtd_Conexoes")
     
-    # Portas privilegiadas (SSH, RDP, etc.)
-    df['porta_privilegiada'] = df['porta_destino'].apply(
-        lambda x: 1 if x in [22, 3389, 3306, 1433, 445, 8080] else 0)
+    # Número de IPs de Destino únicos
+    diversidade_ip_destino = grupos["IP de Destino"].nunique().rename("Diversidade_IP_Destino")
     
-    # IP está na blacklist
-    blacklist = carregar_blacklist()
-    df['na_blacklist'] = df['ip'].apply(lambda x: 1 if x in blacklist else 0)
+    # Tempo total de atividade (diferença entre última e primeira requisição)
+    tempo_total = grupos["Tempo"].agg(lambda x: max((x.max() - x.min()).total_seconds(), 1)).rename("Tempo_Total")
+
+    # Taxa de requisições por segundo
+    taxa = (qtd_conexoes / tempo_total.replace(0, np.nan)).fillna(0).rename("Requisicoes_por_Segundo")
+
+    # Combina as features em um DataFrame
+    df_features = pd.concat([qtd_conexoes, diversidade_ip_destino, tempo_total, taxa], axis=1).reset_index()
     
-    # Taxa de acessos por minuto
-    df['acessos_por_minuto'] = df.groupby('ip')['ip'].transform('count') / 5  # Janela de 5 minutos
+    # Converter os IPs de Origem para inteiro para comparação
+    df_features["IP de Origem Num"] = df_features["IP de Origem"].apply(lambda ip: ip_to_int(ip) if isinstance(ip, str) else ip)
     
-    # Diversidade de portas acessadas
-    df['diversidade_portas'] = df.groupby('ip')['porta_destino'].transform('nunique')
+    # Adiciona a coluna de Blacklist: 1 se o IP de Origem está na blacklist, 0 caso contrário
+    if blacklist_set is not None:
+        df_features["Blacklist"] = df_features["IP de Origem Num"].apply(lambda ip: 1 if str(ip) in blacklist_set or ip in [ip_to_int(item) for item in blacklist_set] else 0)
+    else:
+        df_features["Blacklist"] = 0
     
-    return df
+    return df_features
 
-# Função para processar o CSV e extrair features
-def process_csv(file_path, limit=900):
-    df = pd.read_csv(file_path, header=None, delimiter=",", engine="python", on_bad_lines="skip")
-    blacklist = carregar_blacklist()
-    dados = []
-    acessos_por_usuario = defaultdict(lambda: defaultdict(int))
-    acessos_sem_usuario = defaultdict(int)
-    ips_conversando = defaultdict(set)
-    velocidade_requisicoes = defaultdict(list)
+def formatar_log_csv(entrada_csv: str, saida_csv: str):
+    colunas = [
+        "Tempo", "Tipo de Regra", "Ação", "Usuário", "Código",
+        "Descrição", "Prioridade", "SNAT", "Porta Interna", "Porta Externa",
+        "IP de Origem", "IP de Destino", "Porta de Origem", "Porta de Destino",
+        "Protocolo", "Bytes Transferidos"
+    ]
 
-    for _, row in df.iterrows():
-        if row[2] == "Allowed":
-            ip_destino = row[11]
-            usuario = row[3] if not pd.isna(row[3]) and row[3] != "" else None
-            timestamp = row[0]
-            porta_origem = row[12]
-            porta_destino = row[13]
-
-            if isinstance(ip_destino, str) and re.match(r'\d+\.\d+\.\d+\.\d+', ip_destino):
-                ausencia_usuario = 1 if usuario is None else 0
-
-                if usuario:
-                    acessos_por_usuario[usuario][ip_destino] += 1
-                else:
-                    acessos_sem_usuario[ip_destino] += 1
-
-                ips_conversando[ip_destino].add(usuario) if usuario else None
-
-                try:
-                    timestamp_dt = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
-                    velocidade_requisicoes[ip_destino].append(timestamp_dt)
-                except ValueError:
-                    print(f"Formato de timestamp inválido: {timestamp}")
-
-                dados.append({
-                    "ip": ip_destino,
-                    "ausencia_usuario": ausencia_usuario,
-                    "frequencia_acesso": acessos_por_usuario[usuario][ip_destino] if usuario else acessos_sem_usuario[ip_destino],
-                    "ips_conversando": len(ips_conversando[ip_destino]),
-                    "timestamp": timestamp,
-                    "porta_origem": porta_origem,
-                    "porta_destino": porta_destino
-                })
-                if len(dados) >= limit:
-                    break
-
-    df_dados = pd.DataFrame(dados)
-    df_dados['ausencia_usuario'] = df_dados.groupby('ip')['ausencia_usuario'].transform('mean')
-
-    def calcular_media_intervalo_temporal(timestamps):
-        if len(timestamps) < 2:
-            return 0
-        timestamps.sort()
-        intervalos = [(timestamps[i+1] - timestamps[i]).total_seconds() for i in range(len(timestamps) - 1)]
-        return sum(intervalos) / len(intervalos)
-
-    df_dados['media_intervalo_temporal'] = df_dados['ip'].apply(lambda ip: calcular_media_intervalo_temporal(velocidade_requisicoes[ip]))
+    linhas_processadas = []
     
-    # Aplicar features avançadas
-    df_dados = criar_features_avancadas(df_dados)
-    
-    return df_dados
+    with open(entrada_csv, "r", encoding="utf-8") as file:
+        for linha in file:
+            linha = linha.strip()
+            campos = linha.split(",")
 
-# Processar dados
-file_path = 'Log_Viewer.csv'
-dados_csv = process_csv(file_path)
-dados_maliciosos = process_csv("logs_maliciosos.csv")
+            # Pula linhas com valores como '0,1,2,...' ou cabeçalho duplicado
+            if campos == colunas:
+                continue
+            if all(c.isdigit() for c in campos[:len(colunas)]):
+                continue
 
-# Adicionar rótulos
-dados_csv['rotulo'] = 0
-dados_maliciosos['rotulo'] = 1
+            if len(campos) >= len(colunas):
+                campos = campos[:len(colunas)]
+                linhas_processadas.append(campos)
 
-# Combinar dados
-dados_completos = pd.concat([dados_csv, dados_maliciosos], ignore_index=True)
+    df = pd.DataFrame(linhas_processadas, columns=None)
+    df.to_csv(saida_csv, index=False, header=False)
+    print(f"Arquivo salvo como: {saida_csv}")
+    print(df.head())
 
-# Codificar portas
-encoder = LabelEncoder()
-dados_completos['porta_destino'] = encoder.fit_transform(dados_completos['porta_destino'])
-dados_completos['porta_origem'] = encoder.fit_transform(dados_completos['porta_origem'])
+formatar_nao_classificados  =  formatar_log_csv("Log_Viewer.csv", "Nao_avaliado.csv")
+formatar_classificados  =  formatar_log_csv("logs_maliciosos.csv", "Malicioso.csv")
 
-# Features selecionadas
-colunas_features = [
-    'ausencia_usuario',
-    'frequencia_acesso',
-    'ips_conversando',
-    'media_intervalo_temporal',
-    'porta_destino',
-    'noturno',
-    'porta_privilegiada',
-    'na_blacklist',
-    'acessos_por_minuto',
-    'diversidade_portas'
-]
+nao_classificados = preparar_dados("Nao_avaliado.csv")
+classificados = preparar_dados("Malicioso.csv")
 
-# Normalização
-scaler = MinMaxScaler()
-dados_completos[colunas_features] = scaler.fit_transform(dados_completos[colunas_features])
+def classificar_comportamento(row):
+    if row["Requisicoes_por_Segundo"] > 10 and row["Diversidade_IP_Destino"] > 7:
+        return 2  # DDoS
+    elif row["Qtd_Conexoes"] > 30 and row["Diversidade_IP_Destino"] > 10:
+        return 1  # Port Scan
+    elif row["Blacklist"] == 1:
+        return 3  # Outro comportamento anômalo
+    else:
+        return 0  # Normal
 
-# Dividir dados
-X = dados_completos[colunas_features]
-y = dados_completos['rotulo']
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
-# Modelo otimizado
-modelo = RandomForestClassifier(
-    n_estimators=150,
-    max_depth=20,
-    class_weight={0:1, 1:3},
-    min_samples_leaf=2,
-    max_features='sqrt',
+blacklist = carregar_blacklist()
+nao_classificados_features = extrair_features_adicionais(nao_classificados, blacklist)
+classificados_features = extrair_features_adicionais(classificados, blacklist)
+
+# Adiciona coluna de classe
+nao_classificados_features["Classe"] = 0  # Não malicioso
+classificados_features["Classe"] = 1      # Malicioso
+# Junta os dois datasets
+df = pd.concat([nao_classificados_features, classificados_features], ignore_index=True)
+# Separa por classe
+classe_0 = df[df["Classe"] == 0]
+classe_1 = df[df["Classe"] == 1]
+# Verifica qual classe está em menor quantidade
+if len(classe_0) > len(classe_1):
+    classe_minoria = classe_1
+    classe_majoria = classe_0
+else:
+    classe_minoria = classe_0
+    classe_majoria = classe_1
+# Faz oversampling da minoria para igualar a maioria
+classe_minoria_upsampled = resample(
+    classe_minoria,
+    replace=True,
+    n_samples=len(classe_majoria),
     random_state=42
 )
+
+def int_to_ip(ip_int):
+    try:
+        return str(ipaddress.IPv4Address(int(ip_int)))
+    except:
+        return None
+
+# Junta os dois de novo, agora balanceados
+df_balanceado = pd.concat([classe_majoria, classe_minoria_upsampled], ignore_index=True)
+# Embaralha os dados (opcional, mas recomendado)
+df_balanceado = df_balanceado.sample(frac=1, random_state=42).reset_index(drop=True)
+# Agora seus dados estão prontos para o modelo
+X = df_balanceado.drop("Classe", axis=1)
+y = df_balanceado["Classe"]
+
+# Divide os dados em treino e teste
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Cria e treina o modelo
+modelo = RandomForestClassifier(n_estimators=200, max_depth=10,random_state=42)
 modelo.fit(X_train, y_train)
+# Faz previsões
+y_pred = modelo.predict(X_test)
+
+# Junta os dados de teste com os resultados das previsões
+df_resultado = X_test.copy()
+df_resultado["Classe_Real"] = y_test.values
+df_resultado["Classe_Prevista"] = y_pred
+
+# Apenas registros previstos como maliciosos
+ips_maliciosos = df_resultado[df_resultado["Classe_Prevista"] == 1]
+ips_maliciosos['IP de Origem'] = ips_maliciosos['IP de Origem'].apply(int_to_ip)
+ips_maliciosos["Comportamento"] = ips_maliciosos.apply(classificar_comportamento, axis=1)
+ips_maliciosos.to_csv("ips_maliciosos.txt", index=False, sep="\t")
+# Avaliação
+print(classification_report(y_test, y_pred))
 
 
-# ADICIONE ESTA SEÇÃO PARA GERAR O RELATÓRIO DE IPS SUSPEITOS:
-def gerar_relatorio_suspeitos(modelo, dados, colunas_features, threshold=0.7):
-    # Fazer previsões e pegar probabilidades
-    probas = modelo.predict_proba(dados[colunas_features])[:,1]
-    dados['probabilidade_malicioso'] = probas
-    
-    # Filtrar IPs suspeitos
-    ips_suspeitos = dados[dados['probabilidade_malicioso'] >= threshold].copy()
-    
-    # Função para explicar as decisões
-    def explicar_decisao(row):
-        reasons = []
-        if row['na_blacklist'] > 0.5:
-            reasons.append("IP na blacklist conhecida")
-        if row['porta_privilegiada'] > 0.5:
-            reasons.append(f"Acesso a porta privilegiada ({row['porta_destino']})")
-        if row['noturno'] > 0.5:
-            reasons.append("Atividade noturna (00h-6h)")
-        if row['ausencia_usuario'] > 0.8:
-            reasons.append("Alta taxa de acessos sem autenticação")
-        if row['acessos_por_minuto'] > np.percentile(dados['acessos_por_minuto'], 70):
-            reasons.append(f"Taxa anormal de acessos ({row['acessos_por_minuto']:.1f}/min)")
-        if row['diversidade_portas'] > np.percentile(dados['diversidade_portas'], 70):
-            reasons.append(f"Varredura de portas ({int(row['diversidade_portas'])} portas distintas)")
-        return "; ".join(reasons) if reasons else "Padrão genérico suspeito"
-    
-    # Adicionar coluna de razões
-    ips_suspeitos['razao_suspeita'] = ips_suspeitos.apply(explicar_decisao, axis=1)
-    
-    # Ordenar por probabilidade
-    ips_suspeitos = ips_suspeitos.sort_values('probabilidade_malicioso', ascending=False)
-    
-    # Selecionar colunas relevantes para o relatório
-    cols_relatorio = ['ip', 'probabilidade_malicioso', 'razao_suspeita'] + colunas_features
-    return ips_suspeitos[cols_relatorio]
+y_proba = modelo.predict_proba(X_test)[:, 1]
+fpr, tpr, _ = roc_curve(y_test, y_proba)
+roc_auc = auc(fpr, tpr)
 
-# Configurações para exibição completa no pandas
-pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None)
-pd.set_option('display.width', None)
-pd.set_option('display.max_colwidth', None)
-
-# Gerar relatório completo
-relatorio_suspeitos = gerar_relatorio_suspeitos(modelo, dados_csv, colunas_features)
-
-# Função para exibir todos os IPs formatados
-def exibir_todos_ips(relatorio):
-    print("\n" + "="*100)
-    print("RELATÓRIO COMPLETO DE IPS SUSPEITOS".center(100))
-    print("="*100)
-    
-    if relatorio.empty:
-        print("\nNenhum IP suspeito encontrado!")
-        return
-    
-    print(f"\nTotal de IPs suspeitos detectados: {len(relatorio)}")
-    print("\nDetalhamento completo:")
-    
-    # Exibir cada IP com suas informações
-    for idx, linha in relatorio.iterrows():
-        print("\n" + "-"*100)
-        print(f"IP: {linha['ip']}")
-        print(f"Probabilidade: {linha['probabilidade_malicioso']:.2%}")
-        print(f"Razões: {linha['razao_suspeita']}")
-        
-        print("\nCaracterísticas detalhadas:")
-        print(f"- Ausência usuário: {linha['ausencia_usuario']:.2f}")
-        print(f"- Frequência acesso: {linha['frequencia_acesso']:.2f}")
-        print(f"- IPs conversando: {linha['ips_conversando']:.2f}")
-        print(f"- Intervalo temporal: {linha['media_intervalo_temporal']:.2f}")
-        print(f"- Porta destino: {linha['porta_destino']}")
-        print(f"- Horário noturno: {'Sim' if linha['noturno'] > 0.5 else 'Não'}")
-        print(f"- Porta privilegiada: {'Sim' if linha['porta_privilegiada'] > 0.5 else 'Não'}")
-        print(f"- Na blacklist: {'Sim' if linha['na_blacklist'] > 0.5 else 'Não'}")
-        print(f"- Acessos/min: {linha['acessos_por_minuto']:.2f}")
-        print(f"- Diversidade portas: {linha['diversidade_portas']}")
-
-# Exibir todos os IPs
-exibir_todos_ips(relatorio_suspeitos)
-
-# Salvar em CSV (opcional)
-relatorio_suspeitos.to_csv('ips_suspeitos_completo.csv', index=False)
-print("\nRelatório completo salvo em 'ips_suspeitos_completo.csv'")
+plt.figure()
+plt.plot(fpr, tpr, label=f"ROC Curve (AUC = {roc_auc:.2f})")
+plt.plot([0, 1], [0, 1], 'k--')
+plt.xlabel("FPR")
+plt.ylabel("TPR")
+plt.title("Curva ROC")
+plt.legend(loc="lower right")
+plt.grid()
+plt.show()
