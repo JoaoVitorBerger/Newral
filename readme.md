@@ -1,31 +1,31 @@
 # Newral
-* * Projeto Rede Neural
+Projeto Rede Neural
 
-* * Bibliotecas utilizadas no projeto
+Bibliotecas utilizadas no projeto
 
-# skelarn - biblioteca relacionada ao aprendizado de máquina em python, nela estou utilizando o resample para definir um balanço entre os dados maliciosos e não classificados, essa ação evita que o modelo entre em overfitting, ou seja, memorize os dados de treino e não consiga generalizar bem para dados não classificados.
+skelarn - biblioteca relacionada ao aprendizado de máquina em python, nela estou utilizando o resample para definir um balanço entre os dados maliciosos e não classificados, essa ação evita que o modelo entre em overfitting, ou seja, memorize os dados de treino e não consiga generalizar bem para dados não classificados.
 
-# ensemble - responsável por disponibilizar os modelos de classificação e detecção de anômalias.
+ensemble - responsável por disponibilizar os modelos de classificação e detecção de anômalias.
 
-# model_selection - utilizado para dividar os valores entre treino e teste.
+model_selection - utilizado para dividar os valores entre treino e teste.
 
-# metrics - utilizado para classificar a precisão e o erro do modelo, adicionei a ROC CURVE, responsável por mostrar a taxa dos verdadeiros positivos e a AUC área under de curve, no caso ele cria um parâmetro de avaliação do modelo que varia entre 0 e 1.
+metrics - utilizado para classificar a precisão e o erro do modelo, adicionei a ROC CURVE, responsável por mostrar a taxa dos verdadeiros positivos e a AUC área under de curve, no caso ele cria um parâmetro de avaliação do modelo que varia entre 0 e 1.
 
-# matplotlib - Utilizada para plotar os valores dentro da curva ROC, trazendo resultados sobre as predições do modelo.
+matplotlib - Utilizada para plotar os valores dentro da curva ROC, trazendo resultados sobre as predições do modelo.
 
-# ipadress - utilizado para converter valores ips que estão em formato string em valores numéricos.
+ipadress - utilizado para converter valores ips que estão em formato string em valores numéricos.
 
-# BeautifulSoup - utilizado para transformar o html em um arquivo de dados, facilitando a extração de valores desejados.
+BeautifulSoup - utilizado para transformar o html em um arquivo de dados, facilitando a extração de valores desejados.
 
-# requests - utilizado para realizar requisições https.
+requests - utilizado para realizar requisições https.
 
-# pandas - utilizado para o manuseio dos dados dispostos nas planilha, afim de organizar os valores de entrada.
+pandas - utilizado para o manuseio dos dados dispostos nas planilha, afim de organizar os valores de entrada.
 
-# numpy - utilizado para a manipulação de matrizes multidimensionais.
+numpy - utilizado para a manipulação de matrizes multidimensionais.
 
-* * Execute utilizando o comando CTRL + "' e instale as seguintes bibliotecas
+Execute utilizando o comando CTRL + "' e instale as seguintes bibliotecas
 
-# pip install pandas requests beautifulsoup4 numpy scikit-learn matplotlib
+pip install pandas requests beautifulsoup4 numpy scikit-learn matplotlib
 
 1. Nos arquivos logs_maliciosos.csv e Log_Viewer, estão os dados que serão processados pela rede, de início temos um arquivo CSV sem formatação e extruturação de colunas. Na função  # formatar_log_csv separamos os dados por features, ou características que utilizaremos para a predição. Os dois arquivos passam por essa função gerando dois arquivos, Malicioso.csv e Nao_avaliado.csv Esses são nosso dados formatados e prontos para as próximas etapas.
 
