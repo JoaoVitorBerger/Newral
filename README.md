@@ -1,6 +1,6 @@
-# Newral - Projeto Rede Neural
+# Newral - Projeto Random Forest
 
-Este é um projeto de rede neural para detecção de anomalias, com foco em ataques como **DDos** e **Port Scan**. Abaixo estão as bibliotecas utilizadas e um resumo do fluxo de processamento dos dados.
+Este é um projeto de machine learning para detecção de anomalias, com foco em ataques como **DDos** e **Port Scan**. Abaixo estão as bibliotecas utilizadas e um resumo do fluxo de processamento dos dados.
 
 ## Bibliotecas utilizadas
 
