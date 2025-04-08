@@ -1,7 +1,7 @@
 # Newral
-## _ _Projeto Rede Neural
+* * Projeto Rede Neural
 
-## _ _Bibliotecas utilizadas no projeto
+* * Bibliotecas utilizadas no projeto
 
 # skelarn - biblioteca relacionada ao aprendizado de máquina em python, nela estou utilizando o resample para definir um balanço entre os dados maliciosos e não classificados, essa ação evita que o modelo entre em overfitting, ou seja, memorize os dados de treino e não consiga generalizar bem para dados não classificados.
 
@@ -23,7 +23,7 @@
 
 # numpy - utilizado para a manipulação de matrizes multidimensionais.
 
-# _ _ Execute utilizando o comando CTRL + "' e instale as seguintes bibliotecas
+* * Execute utilizando o comando CTRL + "' e instale as seguintes bibliotecas
 
 # pip install pandas requests beautifulsoup4 numpy scikit-learn matplotlib
 
