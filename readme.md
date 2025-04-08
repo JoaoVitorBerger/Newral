@@ -1,48 +1,87 @@
-# Newral
-Projeto Rede Neural
+# Newral - Projeto Rede Neural
 
-Bibliotecas utilizadas no projeto
+Este é um projeto de rede neural para detecção de anomalias, com foco em ataques como **DDos** e **Port Scan**. Abaixo estão as bibliotecas utilizadas e um resumo do fluxo de processamento dos dados.
 
-skelarn - biblioteca relacionada ao aprendizado de máquina em python, nela estou utilizando o resample para definir um balanço entre os dados maliciosos e não classificados, essa ação evita que o modelo entre em overfitting, ou seja, memorize os dados de treino e não consiga generalizar bem para dados não classificados.
+## Bibliotecas utilizadas
 
-ensemble - responsável por disponibilizar os modelos de classificação e detecção de anômalias.
+- **sklearn**: Biblioteca relacionada ao aprendizado de máquina em Python. Estamos utilizando o `resample` para definir um balanço entre dados maliciosos e não classificados, evitando o overfitting (memorização excessiva dos dados de treino).
+- **ensemble**: Disponibiliza modelos de classificação e detecção de anomalias.
+- **model_selection**: Utilizada para dividir os dados entre treino e teste.
+- **metrics**: Usada para avaliar a precisão e o erro do modelo. A `ROC CURVE` foi adicionada para mostrar a taxa de verdadeiros positivos e a AUC (Área Sob a Curva), que é um parâmetro de avaliação que varia de 0 a 1.
+- **matplotlib**: Utilizada para plotar a curva ROC e visualizar os resultados das predições do modelo.
+- **ipaddress**: Converte endereços IP em formato string para valores numéricos.
+- **BeautifulSoup**: Facilita a extração de dados de arquivos HTML.
+- **requests**: Realiza requisições HTTP.
+- **pandas**: Manipula os dados contidos em planilhas, organizando os valores de entrada.
+- **numpy**: Manipula matrizes multidimensionais.
 
-model_selection - utilizado para dividar os valores entre treino e teste.
+## Instalação
 
-metrics - utilizado para classificar a precisão e o erro do modelo, adicionei a ROC CURVE, responsável por mostrar a taxa dos verdadeiros positivos e a AUC área under de curve, no caso ele cria um parâmetro de avaliação do modelo que varia entre 0 e 1.
+Para executar o projeto, instale as bibliotecas necessárias utilizando o seguinte comando:
 
-matplotlib - Utilizada para plotar os valores dentro da curva ROC, trazendo resultados sobre as predições do modelo.
-
-ipadress - utilizado para converter valores ips que estão em formato string em valores numéricos.
-
-BeautifulSoup - utilizado para transformar o html em um arquivo de dados, facilitando a extração de valores desejados.
-
-requests - utilizado para realizar requisições https.
-
-pandas - utilizado para o manuseio dos dados dispostos nas planilha, afim de organizar os valores de entrada.
-
-numpy - utilizado para a manipulação de matrizes multidimensionais.
-
-Execute utilizando o comando CTRL + "' e instale as seguintes bibliotecas
-
+```bash
 pip install pandas requests beautifulsoup4 numpy scikit-learn matplotlib
+Fluxo do Projeto
+Processamento Inicial de Dados
 
-1. Nos arquivos logs_maliciosos.csv e Log_Viewer, estão os dados que serão processados pela rede, de início temos um arquivo CSV sem formatação e extruturação de colunas. Na função  # formatar_log_csv separamos os dados por features, ou características que utilizaremos para a predição. Os dois arquivos passam por essa função gerando dois arquivos, Malicioso.csv e Nao_avaliado.csv Esses são nosso dados formatados e prontos para as próximas etapas.
+Os arquivos logs_maliciosos.csv e Log_Viewer contêm os dados a serem processados. Inicialmente, temos um arquivo CSV sem formatação. A função formatar_log_csv separa os dados por features (ou características) utilizadas para predição. Isso gera dois arquivos: Malicioso.csv e Nao_avaliado.csv, que contêm os dados formatados.
 
-2. Na função preparar_dados, temos a seleção das features mais importantes que desejamos utilizar, no caso para os ataques de DDos e Port Scan, estou selecionando as que mais levantam suspeitas quanto a essas atividades.
+Seleção de Features
 
-3. Os dados seguem para a função extrair_features_adicionais, essas features irão auxiliar na criação de um comportamento para cada IP, como um rótulo de atividades, buscando por requisições anormais para vários endereços, quantidades de solicitações por segundo e diversidade de endereços de destino. Ao identificarmos todas as características que aquele dado trouxe consigo para essa função, criamos um comportamento para o dado e posteriormente utilizaremos um rótulo para informar ao algoritmo, que aquele padrão de comportamento, deve ser considerados como malicioso.
+A função preparar_dados seleciona as features mais importantes para a detecção de ataques, como DDos e Port Scan. Estamos focando nas features que mais indicam esses tipos de atividades.
 
-4. Feito isso, podemos rotular os dados criando um index chamado "Classe" que recebe 1 para valores maliciosos e 0 para não classificados.
+Extração de Features Adicionais
 
-5. Após a rotulagem dos dados, temos o resample, como citado anteriormente, ele realiza o balanço dos dados para que não ocorra overfitting trazendo uma mesma quantidade de dados de entrada para os dois casos.
+A função extrair_features_adicionais adiciona mais características aos dados, como:
 
-6. Feito isso, os dados são agrupados em uma pilha e embaralhados.
+Rótulos de atividades de IPs.
 
-7. Inserimos os valores no modelo de classificação e treinamos o modelo com 20% dos dados fornecidos.
+Análise de requisições anormais, como múltiplas requisições para diferentes endereços em um curto período.
 
-8. Feito isso copiamos os valores que foram gerados no teste e verificamos o valor do rótulo, valor pré-processamento com o pós processamento.
+Com essas novas características, podemos criar um padrão de comportamento para cada IP e identificar se ele é malicioso.
 
-9. Separamos os registros maliciosos e chamamos a função classificar comportamento, ela será responsável por avaliar em qual predição o valor caiu no índice Classe_Prevista, seja 1 para Port Scan, 2 para DDos e 0 para nenhuma anomalia.
+Rotulagem dos Dados
 
-10. Depois avaliamos o desempenho do modelo e plotamos a curva ROC, quanto mais o valor se aproximar de 1, maior é a precisão do algoritmo, meu útlimo registro foi de 98% de precisão. Todos os valores identificados como malicioso, são salvos em um txt chamado ips_maliciosos.txt
+Após a extração das features, os dados são rotulados com a coluna Classe:
+
+1 para valores maliciosos (como DDos ou Port Scan).
+
+0 para dados não classificados.
+
+Balanceamento de Dados
+
+O resample é utilizado para balancear os dados, garantindo que o número de entradas seja igual para ambos os casos (malicioso e não classificado), prevenindo o overfitting.
+
+Embaralhamento e Preparação para o Modelo
+
+Após o balanceamento, os dados são agrupados e embaralhados para garantir uma distribuição aleatória e evitar viés.
+
+Treinamento do Modelo
+
+Os dados são inseridos no modelo de classificação, e o treinamento é feito utilizando 20% dos dados para teste.
+
+Pré-processamento e Pós-processamento
+
+Após o treinamento, os dados são testados e os valores de rótulos são comparados entre o pré-processamento e o pós-processamento para verificar a precisão do modelo.
+
+Classificação do Comportamento
+
+Os registros maliciosos são classificados pela função classificar_comportamento, que avalia em qual predição os dados caem:
+
+1 para Port Scan.
+
+2 para DDos.
+
+0 para nenhuma anomalia.
+
+Avaliação de Desempenho
+
+O desempenho do modelo é avaliado e a curva ROC é plotada. Quanto mais a curva se aproximar de 1, maior será a precisão do modelo. O último registro foi de 98% de precisão.
+
+Armazenamento dos Resultados
+
+Todos os valores identificados como maliciosos são salvos em um arquivo chamado ips_maliciosos.txt.
+
+Considerações Finais
+Este projeto utiliza técnicas de aprendizado de máquina e redes neurais para detectar comportamentos anômalos em redes, como ataques de DDos e Port Scan. Com uma precisão de 98%, o modelo tem mostrado resultados promissores para identificar e classificar esses ataques de forma eficaz.
+
