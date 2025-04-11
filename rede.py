@@ -59,19 +59,20 @@ def preparar_dados(caminho_arquivo):
         df = pd.read_csv(caminho_arquivo, header=None, names=colunas, delimiter=",", engine="python")
     except:
         df = pd.read_csv(caminho_arquivo, header=None, names=colunas, delimiter=";", engine="python")
-    print(df)
+    
     # Converte a coluna de tempo para timestamp UNIX
     df["Tempo"] = pd.to_datetime(df["Tempo"], errors="coerce").astype(np.int64) // 10**9      # Adiciona colunas de tempo (Ano, Mês, Dia, Hora, Minuto, Segundo)
     df["Hora"] = pd.to_datetime(df["Tempo"], unit="s").dt.hour
     df["Minuto"] = pd.to_datetime(df["Tempo"], unit="s").dt.minute
     df["Segundo"] = pd.to_datetime(df["Tempo"], unit="s").dt.second    # Mapeia se o usuário existe (1 se existir, 0 se for vazio)
+    df["Tempo_Segundos"] = df["Hora"] * 3600 + df["Minuto"] * 60 + df["Segundo"]
     df["Usuário"] = df["Usuário"].apply(lambda x: 1 if isinstance(x, str) and x.strip() else 0)    # Converte IPs para inteiros
     df["IP de Origem"] = df["IP de Origem"].apply(ip_to_int)
     df["IP de Destino"] = df["IP de Destino"].apply(ip_to_int)    # Converte protocolos para valores numéricos
     df["Protocolo"] = df["Protocolo"].apply(protocolo_para_int)    # Converte portas para inteiros
     df["Porta de Origem"] = pd.to_numeric(df["Porta de Origem"], errors="coerce").fillna(0).astype(int)
     df["Porta de Destino"] = pd.to_numeric(df["Porta de Destino"], errors="coerce").fillna(0).astype(int)    # Seleciona as colunas relevantes
-    colunas_finais = ["Tempo","Hora", "Minuto", "Segundo",
+    colunas_finais = ["Tempo","Hora", "Minuto", "Segundo","Tempo_Segundos",
                       "Usuário", "IP de Origem", "IP de Destino", "Protocolo",
                       "Porta de Origem", "Porta de Destino"]
   
@@ -80,6 +81,7 @@ def preparar_dados(caminho_arquivo):
 
 def extrair_features_adicionais(df, blacklist_set=None):
     df["Tempo"] = pd.to_datetime(df["Tempo"])
+    print(df["Porta de Destino"])
     # Ordena o DataFrame por IP de Origem e Tempo
     df_sorted = df.sort_values(by=["IP de Origem", "Tempo"])
     grupos = df_sorted.groupby("IP de Origem")
@@ -91,13 +93,14 @@ def extrair_features_adicionais(df, blacklist_set=None):
     diversidade_ip_destino = grupos["IP de Destino"].nunique().rename("Diversidade_IP_Destino")
     
     # Tempo total de atividade (diferença entre última e primeira requisição)
-    tempo_total = grupos["Tempo"].agg(lambda x: max((x.max() - x.min()).total_seconds(), 1)).rename("Tempo_Total")
+    tempo_total = grupos["Tempo_Segundos"].agg(lambda x: x.max() - x.min()).rename("Tempo_Total_das_requisicoes")
 
     # Taxa de requisições por segundo
     taxa = (qtd_conexoes / tempo_total.replace(0, np.nan)).fillna(0).rename("Requisicoes_por_Segundo")
 
+    qtd_portas_solicitadas = grupos["Porta de Destino"].nunique().rename("Qtd_Portas_Solicitadas")
     # Combina as features em um DataFrame
-    df_features = pd.concat([qtd_conexoes, diversidade_ip_destino, tempo_total, taxa], axis=1).reset_index()
+    df_features = pd.concat([qtd_conexoes, diversidade_ip_destino, tempo_total, taxa, qtd_portas_solicitadas], axis=1).reset_index()
     
     # Converter os IPs de Origem para inteiro para comparação
     df_features["IP de Origem Num"] = df_features["IP de Origem"].apply(lambda ip: ip_to_int(ip) if isinstance(ip, str) else ip)
@@ -134,11 +137,11 @@ def formatar_log_csv(entrada_csv: str, saida_csv: str):
             if len(campos) >= len(colunas):
                 campos = campos[:len(colunas)]
                 linhas_processadas.append(campos)
-
-    df = pd.DataFrame(linhas_processadas, columns=None)
-    df.to_csv(saida_csv, index=False, header=False)
+    
+    df = pd.DataFrame(linhas_processadas, columns=colunas)
+    df.to_csv(saida_csv, index=False, header=False, columns=colunas, encoding="utf-8")
     print(f"Arquivo salvo como: {saida_csv}")
-    print(df.head())
+    
 
 formatar_nao_classificados  =  formatar_log_csv("Log_Viewer.csv", "Nao_avaliado.csv")
 formatar_classificados  =  formatar_log_csv("logs_maliciosos.csv", "Malicioso.csv")
@@ -147,9 +150,9 @@ nao_classificados = preparar_dados("Nao_avaliado.csv")
 classificados = preparar_dados("Malicioso.csv")
 
 def classificar_comportamento(row):
-    if row["Requisicoes_por_Segundo"] > 10 and row["Diversidade_IP_Destino"] > 7:
+    if row["Requisicoes_por_Segundo"] <= 0.013 and row["Diversidade_IP_Destino"] > 10:
         return 2  # DDoS
-    elif row["Qtd_Conexoes"] > 30 and row["Diversidade_IP_Destino"] > 10:
+    elif row["Requisicoes_por_Segundo"] <= 0.013  and row["Qtd_Portas_Solicitadas"] > 10:
         return 1  # Port Scan
     elif row["Blacklist"] == 1:
         return 3  # Outro comportamento anômalo
@@ -212,10 +215,10 @@ df_resultado["Classe_Real"] = y_test.values
 df_resultado["Classe_Prevista"] = y_pred
 
 # Apenas registros previstos como maliciosos
-ips_maliciosos = df_resultado[df_resultado["Classe_Prevista"] == 1]
+ips_maliciosos = df_resultado
 ips_maliciosos['IP de Origem'] = ips_maliciosos['IP de Origem'].apply(int_to_ip)
 ips_maliciosos["Comportamento"] = ips_maliciosos.apply(classificar_comportamento, axis=1)
-ips_maliciosos.to_csv("ips_maliciosos.txt", index=False, sep="\t")
+ips_maliciosos.to_csv("ips_maliciosos.csv", index=False, sep=";", encoding="utf-8")
 # Avaliação
 print(classification_report(y_test, y_pred))
 
