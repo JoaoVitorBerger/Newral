@@ -81,7 +81,6 @@ def preparar_dados(caminho_arquivo):
 
 def extrair_features_adicionais(df, blacklist_set=None):
     df["Tempo"] = pd.to_datetime(df["Tempo"])
-    print(df["Porta de Destino"])
     # Ordena o DataFrame por IP de Origem e Tempo
     df_sorted = df.sort_values(by=["IP de Origem", "Tempo"])
     grupos = df_sorted.groupby("IP de Origem")
@@ -98,7 +97,7 @@ def extrair_features_adicionais(df, blacklist_set=None):
     # Taxa de requisições por segundo
     taxa = (qtd_conexoes / tempo_total.replace(0, np.nan)).fillna(0).rename("Requisicoes_por_Segundo")
 
-    qtd_portas_solicitadas = grupos["Porta de Destino"].nunique().rename("Qtd_Portas_Solicitadas")
+    qtd_portas_solicitadas = grupos["Porta de Destino"].count().rename("Qtd_Portas_Solicitadas")
     # Combina as features em um DataFrame
     df_features = pd.concat([qtd_conexoes, diversidade_ip_destino, tempo_total, taxa, qtd_portas_solicitadas], axis=1).reset_index()
     
@@ -149,11 +148,15 @@ formatar_classificados  =  formatar_log_csv("logs_maliciosos.csv", "Malicioso.cs
 nao_classificados = preparar_dados("Nao_avaliado.csv")
 classificados = preparar_dados("Malicioso.csv")
 
+print("Total após preparação:", len(nao_classificados))
+print("Nulos por coluna:")
+print(nao_classificados.isnull().sum())
+
 def classificar_comportamento(row):
     if row["Requisicoes_por_Segundo"] <= 0.013 and row["Diversidade_IP_Destino"] > 10:
-        return 2  # DDoS
-    elif row["Requisicoes_por_Segundo"] <= 0.013  and row["Qtd_Portas_Solicitadas"] > 10:
-        return 1  # Port Scan
+        return "DDos" # DDoS
+    elif (row["Requisicoes_por_Segundo"] <= 0.013  and (row["Qtd_Portas_Solicitadas"] > 10 or row["Qtd_Conexoes"]>20)):
+        return "Port Scan"  # Port Scan
     elif row["Blacklist"] == 1:
         return 3  # Outro comportamento anômalo
     else:
@@ -164,11 +167,14 @@ blacklist = carregar_blacklist()
 nao_classificados_features = extrair_features_adicionais(nao_classificados, blacklist)
 classificados_features = extrair_features_adicionais(classificados, blacklist)
 
+print(classificados_features.__len__())
 # Adiciona coluna de classe
 nao_classificados_features["Classe"] = 0  # Não malicioso
 classificados_features["Classe"] = 1      # Malicioso
+
 # Junta os dois datasets
 df = pd.concat([nao_classificados_features, classificados_features], ignore_index=True)
+
 # Separa por classe
 classe_0 = df[df["Classe"] == 0]
 classe_1 = df[df["Classe"] == 1]
@@ -193,18 +199,22 @@ def int_to_ip(ip_int):
     except:
         return None
 
+print(classe_majoria[:10])
+print(classe_minoria_upsampled[:10])
 # Junta os dois de novo, agora balanceados
 df_balanceado = pd.concat([classe_majoria, classe_minoria_upsampled], ignore_index=True)
 # Embaralha os dados (opcional, mas recomendado)
-df_balanceado = df_balanceado.sample(frac=1, random_state=42).reset_index(drop=True)
+# df_balanceado = df_balanceado.sample(frac=1, random_state=42).reset_index(drop=True)
 # Agora seus dados estão prontos para o modelo
 X = df_balanceado.drop("Classe", axis=1)
 y = df_balanceado["Classe"]
 
 # Divide os dados em treino e teste
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+print("Valores para teste",X_test)
 # Cria e treina o modelo
-modelo = RandomForestClassifier(n_estimators=200, max_depth=10,random_state=42)
+modelo = RandomForestClassifier(n_estimators=5, max_depth=3)
 modelo.fit(X_train, y_train)
 # Faz previsões
 y_pred = modelo.predict(X_test)
@@ -214,7 +224,7 @@ df_resultado = X_test.copy()
 df_resultado["Classe_Real"] = y_test.values
 df_resultado["Classe_Prevista"] = y_pred
 
-# Apenas registros previstos como maliciosos
+# Apenas registros 
 ips_maliciosos = df_resultado
 ips_maliciosos['IP de Origem'] = ips_maliciosos['IP de Origem'].apply(int_to_ip)
 ips_maliciosos["Comportamento"] = ips_maliciosos.apply(classificar_comportamento, axis=1)
