@@ -242,7 +242,7 @@ def treinar_e_avaliar_modelo(X, y, df_completo, int_to_ip, classificar_comportam
     dados_extras = df_completo.loc[X_test.index]
 
     # Treinamento
-    modelo = RandomForestClassifier(n_estimators=5, max_depth=3, random_state=42)
+    modelo = RandomForestClassifier(n_estimators=10, max_depth=3, random_state=42)
     modelo.fit(X_train, y_train)
 
     # Previsão
@@ -346,7 +346,7 @@ def preparar_dados_para_avaliacao(df_novos_dados):
 blacklist = carregar_blacklist()
 
 classificados_features = processar_dados_completos(
-    "D:\\RandomForest\\Newral\\database_treinamento\\trafego_malicioso_padronizado.csv",
+    "D:\\RandomForest\\Newral\\logs_maliciosos.csv",
     "D:\\RandomForest\\Newral\\database_treinamento\\Valores_Maliciosos.csv"
 )
 
@@ -354,7 +354,8 @@ nao_classificados_features = processar_dados_completos(
     "D:\\RandomForest\\Newral\\database_treinamento\\Log_Viewer.csv",
     "D:\\RandomForest\\Newral\\database_treinamento\\Valores_Nao_Avaliados.csv"
 )
-
+print(classificados_features.head())
+print(nao_classificados_features.head())
 
 X, y, df_completo = preparar_dados_para_treinamento(classificados_features, nao_classificados_features)
 
@@ -415,5 +416,5 @@ def avaliar_logs_suspeitos(arquivo_csv):
         return None
 
 
-resultado = avaliar_logs_suspeitos("D:\\RandomForest\\Newral\\database_para_teste\\logs_maliciosos_padronizados.csv")
+resultado = avaliar_logs_suspeitos("D:\\RandomForest\\Newral\\database_para_teste\\logs_simulados.csv")
 
