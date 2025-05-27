@@ -13,6 +13,8 @@ import joblib
 from joblib import dump,load
 import seaborn as sns
 import streamlit as st
+import os
+from datetime import datetime
 
 BLACKLIST_URL = "https://github.com/dolutech/blacklist-dolutech/blob/main/Black-list-semanal-dolutech.txt"
 BLACKLIST_FILE = "D:\\RandomForest\\Newral\\database_treinamento\\Black-list-semanal-dolutech.txt"
@@ -118,6 +120,13 @@ def protocolo_para_int(protocolo):
 }
     return protocolos.get(str(protocolo).upper(), 0)
 
+def exportar_para_excel(df_features, nome_arquivo="features_extraidas"):
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    nome_final = f"{nome_arquivo}_{timestamp}.xlsx"
+    caminho = os.path.join("D:\\RandomForest\\Newral\\saidas", nome_final)
+    df_features.to_excel(caminho, index=False)
+    print(f"📁 Arquivo Excel gerado com sucesso em: {caminho}")
+
 # Processamento inicial do CSV
 def preparar_dados(caminho_arquivo):
     colunas = [
@@ -199,6 +208,7 @@ def extrair_features_adicionais(df, blacklist_set=None):
         df_features["Blacklist"] = 0
 
     print(f"📊 Saída dataframe \n", df_features.head(), len(df_features))
+    df_features.to_csv("D:\\RandomForest\\Newral\\saidas\\data.csv", index=False, sep=";", encoding="utf-8")
     return df_features
 
 
@@ -380,7 +390,7 @@ def treinar_e_avaliar_modelo(X, y, df_completo, int_to_ip, classificar_comportam
     roc_auc = auc(fpr, tpr)
 
     importances = modelo.feature_importances_
-    indices = np.argsort(importances)[::-1]
+    indices = np.argsort(importances)[::-1] 
 
     plt.figure(figsize=(10, 6))
     plt.title("Importância das Features")
