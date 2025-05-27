@@ -1,0 +1,2 @@
+Na árvore de número 6, podemos observar que a disperção dos valores do lado direito da árvore, está aumentando com a aleatoriedade dos valores em relação a hora, quantidade de portas solicitadas e conexões está em alta.
+ao testarmos com o dataset de exemplo ele está identificando todos os valores como nocivos

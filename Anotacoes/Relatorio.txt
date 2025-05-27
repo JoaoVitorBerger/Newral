@@ -1,0 +1,13 @@
+dia 22/05/2025
+
+Estou tendo dificuldades com os datasets, é muito complexo criar um padrão normal de tráfego sem realmente obter valores reais
+ao treinar pelo Log fornecido do trabalho, estou tendo uma certa melhora, porém creio que as features não estão sendo sulficientes. Não sei o que fazer no momento
+acho que vou buscar algum script melhor para a situação, foi observado que os scripts que simulam os logs, são muito tendenciosos e padronizados, as árvores estão
+realizando as definições por uma feature.Aumentei a aleatoriedade dos geradores de algoritmos, aparentemente obtivemos um resultado melhor que o anterior.
+Pude observar que estamos tendo um certo avanço, porém por conta de realizar os ataques em um mesmo espaço de tempo pode ser que o modelo esteja overfitando em relação ao tempo.
+Aparentemente mais gerações de dados, podem ajudar o modelo a treinar de maneira melhorada, estou observando pelo Gini que a média dos Ips de destino é muito baixa no geral,
+realizarei um aumento desse número.
+
+Obtivemos um grande progresso: identifiquei um problema que possívelmente está atrapalhando o treinamento, as horas estavm sendo extraídas no formato Unix de 1970
+timestamp, ou seja os valores apresentados não eram os esperados, estavamos esperando uma comparação de HH:MM:SS e o que obtivemos foi a data em formato numérico desde 1970.
+Após alguns ajustes a comparação está sendo feita de maneira correta.
