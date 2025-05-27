@@ -116,7 +116,7 @@ def protocolo_para_int(protocolo):
     "SCTP": 132,
     "UDPLite": 136
 }
-    return protocolos.get(str(protocolo).upper(), -1)
+    return protocolos.get(str(protocolo).upper(), 0)
 
 # Processamento inicial do CSV
 def preparar_dados(caminho_arquivo):
@@ -138,6 +138,7 @@ def preparar_dados(caminho_arquivo):
 
     df["Tempo"] = pd.to_datetime(df["Tempo"], errors="coerce")
     df["Timestamp"] = df["Tempo"].astype("int64") // 10**9
+    
     df["Hora"] = df["Tempo"].dt.hour
     df["Minuto"] = df["Tempo"].dt.minute
     df["Segundo"] = df["Tempo"].dt.second
@@ -149,7 +150,7 @@ def preparar_dados(caminho_arquivo):
     df["Porta de Origem"] = pd.to_numeric(df["Porta de Origem"], errors="coerce").fillna(0).astype(int)
     df["Porta de Destino"] = pd.to_numeric(df["Porta de Destino"], errors="coerce").fillna(0).astype(int)
 
-    colunas_finais = ["Tempo", "Tempo_Segundos",
+    colunas_finais = ["Tempo_Segundos",
                       "Usuário", "IP de Origem", "IP de Destino", "Protocolo",
                       "Porta de Origem", "Porta de Destino"]
     # print(f"📊 valores selecionados: {len(df)} linhas após formatação")
@@ -157,27 +158,26 @@ def preparar_dados(caminho_arquivo):
     return df[colunas_finais]
 
 def extrair_features_adicionais(df, blacklist_set=None):
-    print(f"📊 Entrada dataframe", df.head(), len(df))
-
-    # Garante que Tempo existe no DataFrame
-    if "Tempo" not in df.columns:
-        raise ValueError("A coluna 'Tempo' precisa estar presente no DataFrame.")
-
-    # Converte Tempo para hora:minuto:segundo e segundos desde o início do dia
-    df["Horario"] = df["Tempo"].dt.strftime("%H:%M:%S")
-    df["Tempo_Segundos"] = df["Tempo"].dt.hour * 3600 + df["Tempo"].dt.minute * 60 + df["Tempo"].dt.second
+    print(f"📊 Entrada dataframe \n", df.head(), len(df))
 
     df_sorted = df.sort_values(by=["IP de Origem", "Tempo_Segundos"])
     grupos = df_sorted.groupby("IP de Origem")
 
+
     # Calcula estatísticas por IP de Origem
     qtd_conexoes = grupos.size().rename("Qtd_Conexoes")
     diversidade_ip_destino = grupos["IP de Destino"].nunique().rename("Diversidade_IP_Destino")
-    tempo_total = grupos["Tempo_Segundos"].agg(lambda x: x.max() - x.min()).rename("Tempo_Total_das_requisicoes")
+    tempo_total = df.groupby("IP de Origem")["Tempo_Segundos"].agg(lambda x: x.max() - x.min())
+    print("valores de tempo total \n",tempo_total.head())
     qtd_portas_solicitadas = grupos["Porta de Destino"].count().rename("Qtd_Portas_Solicitadas")
 
     # Calcula a taxa de requisições por segundo (evita divisão por zero)
-    taxa_requisicoes = (qtd_conexoes / tempo_total.replace(0, pd.NA)).fillna(0).rename("Requisicoes_por_Segundo")
+    taxa_requisicoes = (
+        (qtd_conexoes / tempo_total.replace(0, pd.NA))
+        .fillna(0)
+        .astype(float)
+        .rename("Requisicoes_por_Segundo")
+    )
 
     # Junta tudo em um único DataFrame
     df_features = pd.concat([
@@ -198,7 +198,7 @@ def extrair_features_adicionais(df, blacklist_set=None):
     else:
         df_features["Blacklist"] = 0
 
-    print(f"📊 Saída dataframe", df_features.head(), len(df_features))
+    print(f"📊 Saída dataframe \n", df_features.head(), len(df_features))
     return df_features
 
 
@@ -354,11 +354,11 @@ def int_to_ip(ip_int):
 
 def treinar_e_avaliar_modelo(X, y, df_completo, int_to_ip, classificar_comportamento, caminho_modelo="D:\\RandomForest\\Newral\\modelo_treinado\\modelo_random_forest.joblib"):
     # Divisão dos dados
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.7, random_state=42)
     dados_extras = df_completo.loc[X_test.index]
 
     # Treinamento
-    modelo = RandomForestClassifier(n_estimators=50, random_state=42)
+    modelo = RandomForestClassifier(n_estimators=50, max_features=2, max_depth=6, random_state=42)
     modelo.fit(X_train, y_train)
 
     # Previsão
@@ -462,12 +462,12 @@ def preparar_dados_para_avaliacao(df_novos_dados):
 blacklist = carregar_blacklist()
 
 classificados_features = processar_dados_completos(
-    "logs_maliciosos7.csv",
+    "database_treinamento\\logs\\logs_maliciosos11.csv",
     "D:\\RandomForest\\Newral\\database_treinamento\\Valores_Maliciosos.csv"
 )
 
 nao_classificados_features = processar_dados_completos(
-    "logs_legitimos7.csv",
+    "database_treinamento\\logs\\logs_legitimos11.csv",
     "D:\\RandomForest\\Newral\\database_treinamento\\Valores_Nao_Avaliados.csv"
 )
 print(len(classificados_features))
@@ -501,7 +501,7 @@ def avaliar_logs_suspeitos(arquivo_csv):
     # Prepara os dados
     try:
         X_novo, y_novo, df_novo_completo = preparar_dados_para_avaliacao(novos_classificados)
-        print("estou aqui",X_novo.head())
+        print(X_novo.head())
         st.success("[✔] Dados preparados para avaliação.")
     except Exception as e:
         st.error(f"[✖] Erro ao preparar os dados: {e}")
@@ -538,5 +538,4 @@ def avaliar_logs_suspeitos(arquivo_csv):
         return None
 
 
-resultado = avaliar_logs_suspeitos("D:\\RandomForest\\Newral\\database_para_teste\\logs_simulados.csv")
-
+resultado = avaliar_logs_suspeitos("D:\\RandomForest\\Newral\\database_para_teste\\logs_extremos_avaliacao.csv")

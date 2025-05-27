@@ -11,3 +11,8 @@ realizarei um aumento desse número.
 Obtivemos um grande progresso: identifiquei um problema que possívelmente está atrapalhando o treinamento, as horas estavm sendo extraídas no formato Unix de 1970
 timestamp, ou seja os valores apresentados não eram os esperados, estavamos esperando uma comparação de HH:MM:SS e o que obtivemos foi a data em formato numérico desde 1970.
 Após alguns ajustes a comparação está sendo feita de maneira correta.
+
+Dia 27/05/2024
+
+Foi observado que ao criar datasets com cronologia de tempo muito linear, o modelo apresenta sobreajuste com os dados de treino. CHeguei a conclusão de que para uma identificação muito precisa, em questão de milissegundos
+preciso de mais features.
