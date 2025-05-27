@@ -1,0 +1,9 @@
+No 1 dataset de teste, foi observado que o modelo teve uma boa avaliação dos valores, trazendo valores que estavam rotulados como 0,
+porém por seu comportamento, o algoritmo identificou que ele realmente era nocivo. Após uma avaliação dos valores, foi constatado que realmente o valor era nocivo, no caso havia mais de um valor, informando que no geral o algoritmo se saiu bem nesse caso
+
+Porém ao observar as árvores de decisão, foi identificado que o tempo das requisições na maioria dos casos estava dentro de 1.5 segundos, tive a ideia de testar com um dataset mais espaçado em relação aos tempos e o resultado obtido foi que o modelo se saiu mal nos casos
+e não identificou os valores como nocivos, o que pode ser um ponto a se observar, pois o modelo não se saiu bem em relação a esse ponto.
+
+
+
+

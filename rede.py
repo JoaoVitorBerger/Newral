@@ -39,85 +39,169 @@ def carregar_blacklist():
         baixar_blacklist()
         return carregar_blacklist()
 
+# Conversão de IP para inteiro
 def ip_to_int(ip):
-    """Converte um endereço IP para um número inteiro."""
     try:
-        return int(ipaddress.ip_address(ip))
-    except ValueError:
-        return 0  # Se não for um IP válido, retorna 0
+        parts = list(map(int, ip.strip().split('.')))
+        return (parts[0] << 24) + (parts[1] << 16) + (parts[2] << 8) + parts[3]
+    except:
+        return 0
 
+# Conversão de protocolo
 def protocolo_para_int(protocolo):
-    """Mapeia protocolos para valores numéricos."""
-    protocolos = {"TCP": 6, "UDP": 17, "ICMP": 1}
-    return protocolos.get(protocolo.upper(), -1)  # Retorna -1 se não estiver na lista
+    protocolos = protocolos = {
+    "HOPOPT": 0,
+    "ICMP": 1,
+    "IGMP": 2,
+    "GGP": 3,
+    "IPv4": 4,
+    "ST": 5,
+    "TCP": 6,
+    "CBT": 7,
+    "EGP": 8,
+    "IGP": 9,
+    "BBN-RCC-MON": 10,
+    "NVP-II": 11,
+    "PUP": 12,
+    "ARGUS": 13,
+    "EMCON": 14,
+    "XNET": 15,
+    "CHAOS": 16,
+    "UDP": 17,
+    "MUX": 18,
+    "DCN-MEAS": 19,
+    "HMP": 20,
+    "PRM": 21,
+    "XNS-IDP": 22,
+    "TRUNK-1": 23,
+    "TRUNK-2": 24,
+    "LEAF-1": 25,
+    "LEAF-2": 26,
+    "RDP": 27,
+    "IRTP": 28,
+    "ISO-TP4": 29,
+    "NETBLT": 30,
+    "MFE-NSP": 31,
+    "MERIT-INP": 32,
+    "DCCP": 33,
+    "3PC": 34,
+    "IDPR": 35,
+    "XTP": 36,
+    "DDP": 37,
+    "IDPR-CMTP": 38,
+    "TP++": 39,
+    "IL": 40,
+    "IPv6": 41,
+    "SDRP": 42,
+    "IPv6-Route": 43,
+    "IPv6-Frag": 44,
+    "IDRP": 45,
+    "RSVP": 46,
+    "GRE": 47,
+    "DSR": 48,
+    "BNA": 49,
+    "ESP": 50,
+    "AH": 51,
+    "I-NLSP": 52,
+    "SWIPE": 53,
+    "NARP": 54,
+    "MOBILE": 55,
+    "TLSP": 56,
+    "SKIP": 57,
+    "ICMPv6": 58,
+    "IPv6-NoNxt": 59,
+    "IPv6-Opts": 60,
+    "VRRP": 112,
+    "L2TP": 115,
+    "SCTP": 132,
+    "UDPLite": 136
+}
+    return protocolos.get(str(protocolo).upper(), -1)
 
-#Primeira etapa dados treinamento
+# Processamento inicial do CSV
 def preparar_dados(caminho_arquivo):
-    """Processa os dados do arquivo CSV e retorna um DataFrame formatado."""
     colunas = [
         "Tempo", "Tipo de Regra", "Ação", "Usuário", "Código",
-        "Descrição", "Prioridade", "SNAT", "Porta Interna", "Porta Externa",
+        "Descrição", "Prioridade", "SNAT",
         "IP de Origem", "IP de Destino", "Porta de Origem", "Porta de Destino",
         "Protocolo", "Bytes Transferidos"
-    ]    # Tentar carregar os dados
+    ]
+
     try:
-        df = pd.read_csv(caminho_arquivo, header=None, names=colunas, delimiter=",", engine="python")
+        df = pd.read_csv(caminho_arquivo, header=None, delimiter=",", engine="python")
     except:
-        df = pd.read_csv(caminho_arquivo, header=None, names=colunas, delimiter=";", engine="python")
-    
-    # Converte a coluna de tempo para timestamp UNIX
-    df["Tempo"] = pd.to_datetime(df["Tempo"], errors="coerce").astype(np.int64) // 10**9      # Adiciona colunas de tempo (Ano, Mês, Dia, Hora, Minuto, Segundo)
-    df["Hora"] = pd.to_datetime(df["Tempo"], unit="s").dt.hour
-    df["Minuto"] = pd.to_datetime(df["Tempo"], unit="s").dt.minute
-    df["Segundo"] = pd.to_datetime(df["Tempo"], unit="s").dt.second    # Mapeia se o usuário existe (1 se existir, 0 se for vazio)
+        df = pd.read_csv(caminho_arquivo, header=None, delimiter=";", engine="python")
+    # print(f"📥 preparar_dados: {len(df)} linhas após leitura inicial")
+    # Ignora colunas de índice 8 e 9 (Porta Interna e Externa) e qualquer coluna extra
+    df = df.iloc[:, [0,1,2,3,4,5,6,7,10,11,12,13,14,15]]
+    df.columns = colunas
+
+    df["Tempo"] = pd.to_datetime(df["Tempo"], errors="coerce")
+    df["Timestamp"] = df["Tempo"].astype("int64") // 10**9
+    df["Hora"] = df["Tempo"].dt.hour
+    df["Minuto"] = df["Tempo"].dt.minute
+    df["Segundo"] = df["Tempo"].dt.second
     df["Tempo_Segundos"] = df["Hora"] * 3600 + df["Minuto"] * 60 + df["Segundo"]
-    df["Usuário"] = df["Usuário"].apply(lambda x: 1 if isinstance(x, str) and x.strip() else 0)    # Converte IPs para inteiros
+    df["Usuário"] = df["Usuário"].apply(lambda x: 1 if isinstance(x, str) and x.strip() else 0)
     df["IP de Origem"] = df["IP de Origem"].apply(ip_to_int)
-    df["IP de Destino"] = df["IP de Destino"].apply(ip_to_int)    # Converte protocolos para valores numéricos
-    df["Protocolo"] = df["Protocolo"].apply(protocolo_para_int)    # Converte portas para inteiros
+    df["IP de Destino"] = df["IP de Destino"].apply(ip_to_int)
+    df["Protocolo"] = df["Protocolo"].apply(protocolo_para_int)
     df["Porta de Origem"] = pd.to_numeric(df["Porta de Origem"], errors="coerce").fillna(0).astype(int)
-    df["Porta de Destino"] = pd.to_numeric(df["Porta de Destino"], errors="coerce").fillna(0).astype(int)    # Seleciona as colunas relevantes
-    colunas_finais = ["Tempo","Hora", "Minuto", "Segundo","Tempo_Segundos",
+    df["Porta de Destino"] = pd.to_numeric(df["Porta de Destino"], errors="coerce").fillna(0).astype(int)
+
+    colunas_finais = ["Tempo", "Tempo_Segundos",
                       "Usuário", "IP de Origem", "IP de Destino", "Protocolo",
                       "Porta de Origem", "Porta de Destino"]
-  
-    df_final = df[colunas_finais]
-    return df_final
+    # print(f"📊 valores selecionados: {len(df)} linhas após formatação")
+    print(df[colunas_finais].head())
+    return df[colunas_finais]
 
-#Segunda etapa dados treinamento
 def extrair_features_adicionais(df, blacklist_set=None):
-    df["Tempo"] = pd.to_datetime(df["Tempo"])
-    # Ordena o DataFrame por IP de Origem e Tempo
-    df_sorted = df.sort_values(by=["IP de Origem", "Tempo"])
+    print(f"📊 Entrada dataframe", df.head(), len(df))
+
+    # Garante que Tempo existe no DataFrame
+    if "Tempo" not in df.columns:
+        raise ValueError("A coluna 'Tempo' precisa estar presente no DataFrame.")
+
+    # Converte Tempo para hora:minuto:segundo e segundos desde o início do dia
+    df["Horario"] = df["Tempo"].dt.strftime("%H:%M:%S")
+    df["Tempo_Segundos"] = df["Tempo"].dt.hour * 3600 + df["Tempo"].dt.minute * 60 + df["Tempo"].dt.second
+
+    df_sorted = df.sort_values(by=["IP de Origem", "Tempo_Segundos"])
     grupos = df_sorted.groupby("IP de Origem")
-    
-    # Número total de conexões por IP de Origem
+
+    # Calcula estatísticas por IP de Origem
     qtd_conexoes = grupos.size().rename("Qtd_Conexoes")
-    
-    # Número de IPs de Destino únicos
     diversidade_ip_destino = grupos["IP de Destino"].nunique().rename("Diversidade_IP_Destino")
-    
-    # Tempo total de atividade (diferença entre última e primeira requisição)
     tempo_total = grupos["Tempo_Segundos"].agg(lambda x: x.max() - x.min()).rename("Tempo_Total_das_requisicoes")
-
-    # Taxa de requisições por segundo
-    taxa = (qtd_conexoes / tempo_total.replace(0, np.nan)).fillna(0).rename("Requisicoes_por_Segundo")
-
     qtd_portas_solicitadas = grupos["Porta de Destino"].count().rename("Qtd_Portas_Solicitadas")
-    # Combina as features em um DataFrame
-    df_features = pd.concat([qtd_conexoes, diversidade_ip_destino, tempo_total, taxa, qtd_portas_solicitadas], axis=1).reset_index()
-    
-    # Converter os IPs de Origem para inteiro para comparação
-    df_features["IP de Origem Num"] = df_features["IP de Origem"].apply(lambda ip: ip_to_int(ip) if isinstance(ip, str) else ip)
-    
-    # Adiciona a coluna de Blacklist: 1 se o IP de Origem está na blacklist, 0 caso contrário
+
+    # Calcula a taxa de requisições por segundo (evita divisão por zero)
+    taxa_requisicoes = (qtd_conexoes / tempo_total.replace(0, pd.NA)).fillna(0).rename("Requisicoes_por_Segundo")
+
+    # Junta tudo em um único DataFrame
+    df_features = pd.concat([
+        qtd_conexoes,
+        tempo_total,
+        diversidade_ip_destino,
+        taxa_requisicoes,
+        qtd_portas_solicitadas
+    ], axis=1).reset_index()
+
+    # Coluna de IP numérico
+    df_features["IP de Origem Num"] = df_features["IP de Origem"]
+
+    # Verifica se o IP está na blacklist
     if blacklist_set is not None:
-        df_features["Blacklist"] = df_features["IP de Origem Num"].apply(lambda ip: 1 if str(ip) in blacklist_set or ip in [ip_to_int(item) for item in blacklist_set] else 0)
+        blacklist_ints = set(ip_to_int(ip) for ip in blacklist_set)
+        df_features["Blacklist"] = df_features["IP de Origem Num"].apply(lambda ip: 1 if ip in blacklist_ints else 0)
     else:
         df_features["Blacklist"] = 0
+
+    print(f"📊 Saída dataframe", df_features.head(), len(df_features))
     return df_features
 
-#Terceira etapa dados treinamento
+
 def formatar_log_csv(entrada_csv: str, saida_csv: str):
     colunas = [
         "Tempo", "Tipo de Regra", "Ação", "Usuário", "Código",
@@ -127,25 +211,44 @@ def formatar_log_csv(entrada_csv: str, saida_csv: str):
     ]
 
     linhas_processadas = []
-    
+    total_linhas_lidas = 0
+    linhas_cabecalho_ignoradas = 0
+    linhas_dados_invalidos = 0
+    linhas_aceitas = 0
+
     with open(entrada_csv, "r", encoding="utf-8") as file:
         for linha in file:
+            total_linhas_lidas += 1
             linha = linha.strip()
             campos = linha.split(",")
 
-            # Pula linhas com valores como '0,1,2,...' ou cabeçalho duplicado
             if campos == colunas:
+                linhas_cabecalho_ignoradas += 1
                 continue
             if all(c.isdigit() for c in campos[:len(colunas)]):
+                linhas_dados_invalidos += 1
                 continue
 
             if len(campos) >= len(colunas):
                 campos = campos[:len(colunas)]
                 linhas_processadas.append(campos)
-    
+                linhas_aceitas += 1
+            else:
+                linhas_dados_invalidos += 1
+
     df = pd.DataFrame(linhas_processadas, columns=colunas)
+    # print(df.head())
+
+    # print("📊 Estatísticas da montagem do dataset:")
+    # print(f"🔹 Total de linhas lidas: {total_linhas_lidas}")
+    # print(f"🔹 Linhas ignoradas por serem cabeçalho: {linhas_cabecalho_ignoradas}")
+    # print(f"🔹 Linhas inválidas (curtas ou numéricas): {linhas_dados_invalidos}")
+    # print(f"✅ Linhas válidas processadas: {linhas_aceitas}")
+    # print(f"🧹 Total de linhas no DataFrame final: {len(df)}")
+
     df.to_csv(saida_csv, index=False, header=False, columns=colunas, encoding="utf-8")
-    print(f"Arquivo salvo como: {saida_csv}")
+    # print(f"📁 Arquivo salvo como: {saida_csv}")
+
     
 def processar_dados_completos(entrada_csv: str, nome: str):
     """
@@ -159,13 +262,14 @@ def processar_dados_completos(entrada_csv: str, nome: str):
     # Etapa 1: Formata e limpa o CSV bruto
     csv_formatado = nome
     formatar_log_csv(entrada_csv, csv_formatado)
-
+    print(f"📁 CSV formatado: {csv_formatado}")
     # Etapa 2: Prepara os dados
     df_preparado = preparar_dados(csv_formatado)
-
+    print(f"🧹 Total de linhas no DataFrame preparado: {len(df_preparado)}")
     # Etapa 3: Extrai features adicionais
     df_features = extrair_features_adicionais(df_preparado)
 
+    print(f"🧹 Total de linhas no DataFrame final: {len(df_features)}")
     return df_features
 
 def classificar_comportamento(row):
@@ -187,6 +291,7 @@ def classificar_comportamento(row):
 
 
 def preparar_dados_para_treinamento(df_malicioso, df_nao_malicioso):
+
     # Define rótulos
     df_nao_malicioso["Classe"] = 0
     df_malicioso["Classe"] = 1
@@ -198,6 +303,9 @@ def preparar_dados_para_treinamento(df_malicioso, df_nao_malicioso):
     classe_0 = df[df["Classe"] == 0]
     classe_1 = df[df["Classe"] == 1]
 
+    print(f"\n Antes do balanceamento:")
+    print(f"Classe 0 (não malicioso): {len(classe_0)} registros")
+    print(f"Classe 1 (malicioso): {len(classe_1)} registros")
     # Verifica classe com menor quantidade
     if len(classe_0) > len(classe_1):
         classe_minoria = classe_1
@@ -213,6 +321,14 @@ def preparar_dados_para_treinamento(df_malicioso, df_nao_malicioso):
         n_samples=len(classe_majoria),
         random_state=42
     )
+
+    print(f"\n Após o oversampling:")
+    print(f"Classe majoritária: {len(classe_majoria)} registros")
+    print(f"Classe minoritária (após upsample): {len(classe_minoria_upsampled)} registros")
+
+    # Verificação de duplicatas
+    duplicatas = classe_minoria_upsampled.duplicated().sum()
+    print(f"⚠️ Registros duplicados no oversampling: {duplicatas}")
 
     # Junta de novo, agora balanceado
     df_balanceado = pd.concat([classe_majoria, classe_minoria_upsampled], ignore_index=True)
@@ -242,7 +358,7 @@ def treinar_e_avaliar_modelo(X, y, df_completo, int_to_ip, classificar_comportam
     dados_extras = df_completo.loc[X_test.index]
 
     # Treinamento
-    modelo = RandomForestClassifier(n_estimators=10, max_depth=3, random_state=42)
+    modelo = RandomForestClassifier(n_estimators=50, random_state=42)
     modelo.fit(X_train, y_train)
 
     # Previsão
@@ -346,18 +462,23 @@ def preparar_dados_para_avaliacao(df_novos_dados):
 blacklist = carregar_blacklist()
 
 classificados_features = processar_dados_completos(
-    "D:\\RandomForest\\Newral\\logs_maliciosos.csv",
+    "logs_maliciosos7.csv",
     "D:\\RandomForest\\Newral\\database_treinamento\\Valores_Maliciosos.csv"
 )
 
 nao_classificados_features = processar_dados_completos(
-    "D:\\RandomForest\\Newral\\database_treinamento\\Log_Viewer.csv",
+    "logs_legitimos7.csv",
     "D:\\RandomForest\\Newral\\database_treinamento\\Valores_Nao_Avaliados.csv"
 )
-print(classificados_features.head())
-print(nao_classificados_features.head())
+print(len(classificados_features))
+print(len(nao_classificados_features))
+
 
 X, y, df_completo = preparar_dados_para_treinamento(classificados_features, nao_classificados_features)
+
+print("valor de x",X.head())             # Número de registros (linhas) em X
+print(len(y))             # Número de rótulos
+print(len(df_completo))
 
 modelo = treinar_e_avaliar_modelo(X, y, df_completo, int_to_ip, classificar_comportamento)
 
@@ -380,6 +501,7 @@ def avaliar_logs_suspeitos(arquivo_csv):
     # Prepara os dados
     try:
         X_novo, y_novo, df_novo_completo = preparar_dados_para_avaliacao(novos_classificados)
+        print("estou aqui",X_novo.head())
         st.success("[✔] Dados preparados para avaliação.")
     except Exception as e:
         st.error(f"[✖] Erro ao preparar os dados: {e}")
