@@ -151,7 +151,7 @@ def preparar_dados(caminho_arquivo):
     df["Hora"] = df["Tempo"].dt.hour
     df["Minuto"] = df["Tempo"].dt.minute
     df["Segundo"] = df["Tempo"].dt.second
-    df["Tempo_Segundos"] = df["Hora"] * 3600 + df["Minuto"] * 60 + df["Segundo"]
+    df["Tempo_Segundos"] = df["Minuto"] * 60 + df["Segundo"]
     df["Usuário"] = df["Usuário"].apply(lambda x: 1 if isinstance(x, str) and x.strip() else 0)
     df["IP de Origem"] = df["IP de Origem"].apply(ip_to_int)
     df["IP de Destino"] = df["IP de Destino"].apply(ip_to_int)
