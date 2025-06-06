@@ -89,6 +89,6 @@ for i in range(10000):
 
 # === Exportar CSV ===
 df_teste_modelo = pd.DataFrame(logs_teste)
-df_teste_modelo.to_csv("logs_simulados1.csv", index=False)
+df_teste_modelo.to_csv("simulacao_trefego_para_avaliacao.csv", index=False)
 
 print("✅ CSV gerado com máxima aleatoriedade: logs_simulados_extremos.csv")

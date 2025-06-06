@@ -65,7 +65,7 @@ for _ in range(12000):  # aumenta volume
 
 # Exporta CSV
 df_extremo = pd.DataFrame(logs_extremos)
-df_extremo.to_csv("logs_extremos_avaliacao.csv", index=False)
+df_extremo.to_csv("simulacao_trefego_para_avaliacao_agressivo.csv", index=False)
 print("📁 Dataset extremo de avaliação gerado: logs_extremos_avaliacao.csv")
 
 

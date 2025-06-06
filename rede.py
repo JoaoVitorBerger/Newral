@@ -17,7 +17,7 @@ import os
 from datetime import datetime
 
 BLACKLIST_URL = "https://github.com/dolutech/blacklist-dolutech/blob/main/Black-list-semanal-dolutech.txt"
-BLACKLIST_FILE = "D:\\RandomForest\\Newral\\database_treinamento\\Black-list-semanal-dolutech.txt"
+BLACKLIST_FILE = "database_treinamento\\Black-list-semanal-dolutech.txt"
 
 # Função para baixar a blacklist
 def baixar_blacklist():
@@ -123,7 +123,7 @@ def protocolo_para_int(protocolo):
 def exportar_para_excel(df_features, nome_arquivo="features_extraidas"):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     nome_final = f"{nome_arquivo}_{timestamp}.xlsx"
-    caminho = os.path.join("D:\\RandomForest\\Newral\\saidas", nome_final)
+    caminho = os.path.join("saidas", nome_final)
     df_features.to_excel(caminho, index=False)
     print(f"📁 Arquivo Excel gerado com sucesso em: {caminho}")
 
@@ -163,21 +163,16 @@ def preparar_dados(caminho_arquivo):
                       "Usuário", "IP de Origem", "IP de Destino", "Protocolo",
                       "Porta de Origem", "Porta de Destino"]
     # print(f"📊 valores selecionados: {len(df)} linhas após formatação")
-    print(df[colunas_finais].head())
     return df[colunas_finais]
 
 def extrair_features_adicionais(df, blacklist_set=None):
-    print(f"📊 Entrada dataframe \n", df.head(), len(df))
-
     df_sorted = df.sort_values(by=["IP de Origem", "Tempo_Segundos"])
     grupos = df_sorted.groupby("IP de Origem")
-
 
     # Calcula estatísticas por IP de Origem
     qtd_conexoes = grupos.size().rename("Qtd_Conexoes")
     diversidade_ip_destino = grupos["IP de Destino"].nunique().rename("Diversidade_IP_Destino")
     tempo_total = df.groupby("IP de Origem")["Tempo_Segundos"].agg(lambda x: x.max() - x.min())
-    print("valores de tempo total \n",tempo_total.head())
     qtd_portas_solicitadas = grupos["Porta de Destino"].count().rename("Qtd_Portas_Solicitadas")
 
     # Calcula a taxa de requisições por segundo (evita divisão por zero)
@@ -198,17 +193,18 @@ def extrair_features_adicionais(df, blacklist_set=None):
     ], axis=1).reset_index()
 
     # Coluna de IP numérico
-    df_features["IP de Origem Num"] = df_features["IP de Origem"]
+    # df_features["IP de Origem Num"] = df_features["IP de Origem"]
 
     # Verifica se o IP está na blacklist
     if blacklist_set is not None:
         blacklist_ints = set(ip_to_int(ip) for ip in blacklist_set)
-        df_features["Blacklist"] = df_features["IP de Origem Num"].apply(lambda ip: 1 if ip in blacklist_ints else 0)
+        df_features["Blacklist"] = df_features["IP de Origem"].apply(lambda ip: 1 if ip in blacklist_ints else 0)
     else:
         df_features["Blacklist"] = 0
 
     print(f"📊 Saída dataframe \n", df_features.head(), len(df_features))
-    df_features.to_csv("D:\\RandomForest\\Newral\\saidas\\data.csv", index=False, sep=";", encoding="utf-8")
+    timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    df_features.to_csv(f"saidas\\data_{timestamp}.csv", index=False, sep=";", encoding="utf-8")
     return df_features
 
 
@@ -279,7 +275,6 @@ def processar_dados_completos(entrada_csv: str, nome: str):
     # Etapa 3: Extrai features adicionais
     df_features = extrair_features_adicionais(df_preparado)
 
-    print(f"🧹 Total de linhas no DataFrame final: {len(df_features)}")
     return df_features
 
 def classificar_comportamento(row):
@@ -347,14 +342,17 @@ def preparar_dados_para_treinamento(df_malicioso, df_nao_malicioso):
     colunas_de_features = [col for col in df_balanceado.columns 
                            if col not in ["Classe", "IP de Origem", "IP de Origem Num"]]
 
+    print("Coluna de características",colunas_de_features)
     # Separação X (features) e y (rótulo)
     X = df_balanceado[colunas_de_features]
     y = df_balanceado["Classe"]
 
     # Dados extras (por exemplo, IPs)
-    df_completo = df_balanceado[["IP de Origem", "IP de Origem Num"]]
-
-    return X, y, df_completo
+    # df_completo = df_balanceado[["IP de Origem", "IP de Origem Num"]]
+ 
+    df_balanceado.drop(columns=["IP de Origem"], inplace=True, errors='ignore')
+    print("Colunas para o treinamento", df_balanceado.columns)
+    return X, y, df_balanceado
 
 def int_to_ip(ip_int):
     try:
@@ -366,7 +364,7 @@ def treinar_e_avaliar_modelo(X, y, df_completo, int_to_ip, classificar_comportam
     # Divisão dos dados
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.7, random_state=42)
     dados_extras = df_completo.loc[X_test.index]
-
+    print("Valores de X para o treinamento",X_train.head())
     # Treinamento
     modelo = RandomForestClassifier(n_estimators=50, max_features=2, max_depth=6, random_state=42)
     modelo.fit(X_train, y_train)
@@ -378,10 +376,10 @@ def treinar_e_avaliar_modelo(X, y, df_completo, int_to_ip, classificar_comportam
     df_resultado = X_test.copy()
     df_resultado["Classe_Real"] = y_test.values
     df_resultado["Classe_Prevista"] = y_pred
-    df_resultado[["IP de Origem", "IP de Origem Num"]] = dados_extras.values
-    df_resultado["IP de Origem"] = df_resultado["IP de Origem"].apply(int_to_ip)
+    # df_resultado[["IP de Origem", "IP de Origem Num"]] = dados_extras.values
+    # df_resultado["IP de Origem"] = df_resultado["IP de Origem"].apply(int_to_ip)
     df_resultado["Comportamento"] = df_resultado.apply(classificar_comportamento, axis=1)
-    df_resultado.to_csv("D:\\RandomForest\\Newral\\saidas\\ips_maliciosos.csv", index=False, sep=";", encoding="utf-8")
+    df_resultado.to_csv("saidas\\avalicao_ips_maliciosos_treinamento.csv", index=False, sep=";", encoding="utf-8")
 
     # Avaliação
     print(classification_report(y_test, y_pred))
@@ -429,29 +427,6 @@ def treinar_e_avaliar_modelo(X, y, df_completo, int_to_ip, classificar_comportam
     return modelo
 
 
-def avaliar_novos_dados(caminho_modelo, dados_features, dados_completos, int_to_ip, classificar_comportamento):
-    # Carrega o modelo treinado
-    modelo = load(caminho_modelo)
-    print(f"Modelo carregado de: {caminho_modelo}")
-
-    # Previsão
-    previsoes = modelo.predict(dados_features)
-    probabilidades = modelo.predict_proba(dados_features)[:, 1]
-
-    # Monta resultado
-    df_resultado = dados_features.copy()
-    df_resultado["Classe_Prevista"] = previsoes
-    df_resultado["Probabilidade"] = probabilidades
-    df_resultado[["IP de Origem", "IP de Origem Num"]] = dados_completos[["IP de Origem", "IP de Origem Num"]].values
-    df_resultado["IP de Origem"] = df_resultado["IP de Origem"].apply(int_to_ip)
-    df_resultado["Comportamento"] = df_resultado.apply(classificar_comportamento, axis=1)
-
-    # Exporta resultado
-    df_resultado.to_csv("D:\\RandomForest\\Newral\\saidas\\avaliacao_novos_dados.csv", index=False, sep=";", encoding="utf-8")
-    print("Resultados salvos em: avaliacao_novos_dados.csv")
-
-    return df_resultado
-
 def preparar_dados_para_avaliacao(df_novos_dados):
     # Rotula todos os dados como não maliciosos (classe 0)
     df_novos_dados["Classe"] = 0
@@ -465,34 +440,27 @@ def preparar_dados_para_avaliacao(df_novos_dados):
     # y = df_novos_dados["Classe"]
 
     # Guarda colunas extras (IP etc)
-    df_completo = df_novos_dados[["IP de Origem", "IP de Origem Num"]].copy()
+    # df_completo = df_novos_dados[["IP de Origem", "IP de Origem Num"]].copy()
 
-    return X, y, df_completo
+    return X, y, df_novos_dados
 
 blacklist = carregar_blacklist()
 
 classificados_features = processar_dados_completos(
-    "database_treinamento\\logs\\logs_maliciosos11.csv",
-    "D:\\RandomForest\\Newral\\database_treinamento\\Valores_Maliciosos.csv"
+    "database_treinamento\\logs\\logs_maliciosos16.csv",
+    "database_treinamento\\OrgabizandoDatasetMaliciosos.csv"
 )
 
 nao_classificados_features = processar_dados_completos(
     "database_treinamento\\logs\\logs_legitimos11.csv",
-    "D:\\RandomForest\\Newral\\database_treinamento\\Valores_Nao_Avaliados.csv"
+    "database_treinamento\\OrganizandoDatasetLegitimos.csv"
 )
-print(len(classificados_features))
-print(len(nao_classificados_features))
-
 
 X, y, df_completo = preparar_dados_para_treinamento(classificados_features, nao_classificados_features)
 
-print("valor de x",X.head())             # Número de registros (linhas) em X
-print(len(y))             # Número de rótulos
-print(len(df_completo))
-
 modelo = treinar_e_avaliar_modelo(X, y, df_completo, int_to_ip, classificar_comportamento)
 
-modelo_carregado = joblib.load("D:\\RandomForest\\Newral\\modelo_treinado\\modelo_random_forest.joblib")
+modelo_carregado = joblib.load("modelo_treinado\\modelo_random_forest.joblib")
 
 def avaliar_logs_suspeitos(arquivo_csv):
     st.title("Avaliação de Novos Logs Suspeitos")
@@ -501,7 +469,7 @@ def avaliar_logs_suspeitos(arquivo_csv):
     try:
         novos_classificados = processar_dados_completos(
             arquivo_csv,
-            "D:\\RandomForest\\Newral\\saidas\\avaliacao_nova_base_dados.csv"
+            "saidas\\avaliacao_nova_base_dados.csv"
         )
         st.success("[✔] Dados processados com sucesso.")
     except Exception as e:
@@ -510,8 +478,8 @@ def avaliar_logs_suspeitos(arquivo_csv):
 
     # Prepara os dados
     try:
+        print("novos classificados",novos_classificados.head())
         X_novo, y_novo, df_novo_completo = preparar_dados_para_avaliacao(novos_classificados)
-        print(X_novo.head())
         st.success("[✔] Dados preparados para avaliação.")
     except Exception as e:
         st.error(f"[✖] Erro ao preparar os dados: {e}")
@@ -519,18 +487,18 @@ def avaliar_logs_suspeitos(arquivo_csv):
 
    # Avaliação com modelo
     try:
-        modelo = load("D:\\RandomForest\\Newral\\modelo_treinado\\modelo_random_forest.joblib")
+        modelo = load("modelo_treinado\\modelo_random_forest.joblib")
         y_pred = modelo.predict(X_novo)
-        y_proba = modelo.predict_proba(X_novo)[:, 1]
+        # y_proba = modelo.predict_proba(X_novo)[:, 1]
 
         df_resultado = X_novo.copy()
         df_resultado["Classe_Prevista"] = y_pred
-        df_resultado[["IP de Origem", "IP de Origem Num"]] = df_novo_completo.values
-        df_resultado["IP de Origem"] = df_resultado["IP de Origem"].apply(int_to_ip)
+        # df_resultado[["IP de Origem", "IP de Origem Num"]] = df_novo_completo.values
+        # df_resultado["IP de Origem"] = df_resultado["IP de Origem"].apply(int_to_ip)
         df_resultado["Comportamento"] = df_resultado.apply(classificar_comportamento, axis=1)
 
         # Salva os resultados
-        df_resultado.to_csv("D:\\RandomForest\\Newral\\saidas\\avaliacao_detalhada.csv", index=False, sep=";", encoding="utf-8")
+        df_resultado.to_csv("saidas\\avaliacao_detalhada.csv", index=False, sep=";", encoding="utf-8")
 
         # Informações básicas dos dados classificados
         st.subheader("Resumo da Classificação")
@@ -548,4 +516,4 @@ def avaliar_logs_suspeitos(arquivo_csv):
         return None
 
 
-resultado = avaliar_logs_suspeitos("D:\\RandomForest\\Newral\\database_para_teste\\logs_extremos_avaliacao.csv")
+resultado = avaliar_logs_suspeitos("database_treinamento\\Log_Viewer.csv")
